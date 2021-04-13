@@ -226,8 +226,8 @@ func (c Client) queryAPI(url string) (conditions, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-// Including the HTTP body can help by providing a message from the weather API.
-return conditions{}, fmt.Errorf("HTTP %s returned from weather API: %v", resp.Status, string(data))
+		// Including the HTTP body can help by providing a message from the weather API.
+		return conditions{}, fmt.Errorf("HTTP %s returned from weather API: %v", resp.Status, string(data))
 	}
 
 	var ar owmResponse
@@ -276,18 +276,18 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 		temperature = fmt.Sprintf(", temp %.1f %v", c.ConvertTemp(*w.temperature), tempUnit)
 	}
 
-var feelsLike string
-if w.feelsLike != nil {
+	var feelsLike string
+	if w.feelsLike != nil {
 		feelsLike = fmt.Sprintf(", feels like %.1f %v", c.ConvertTemp(*w.feelsLike), tempUnit)
 	}
 
-var humidity string
-if w.humidity != nil {
+	var humidity string
+	if w.humidity != nil {
 		humidity = fmt.Sprintf(", humidity %.1f%%", *w.humidity)
 	}
 
-var wind string
-if w.windSpeed != nil {
+	var wind string
+	if w.windSpeed != nil {
 		wind = fmt.Sprintf(", wind %.1f %v", c.ConvertSpeed(*w.windSpeed), speedUnit)
 	}
 
@@ -323,10 +323,10 @@ func RunCLI(args []string, output, errOutput io.Writer) error {
 	}
 
 	// Use environment variables if command-line flags were not specified.
-if *cliSpeedUnit == "" {
+	if *cliSpeedUnit == "" {
 		*cliSpeedUnit = os.Getenv("WEATHERCASTER_SPEED_UNIT")
 	}
-if *cliTempUnit == "" {
+	if *cliTempUnit == "" {
 		*cliTempUnit = os.Getenv("WEATHERCASTER_TEMP_UNIT")
 	}
 	if *cliLocation == "" {
@@ -337,30 +337,14 @@ if *cliTempUnit == "" {
 		return fmt.Errorf("Please specify a location using either the -l command-line flag, or by setting the WEATHERCASTER_LOCATION environment variable.")
 	}
 
-	var speedUnit SpeedUnit
-	switch strings.ToLower(*cliSpeedUnit) {
-	case "":
-		// Use the `SpeedUnit` type default.
-	case "mile", "miles":
-		speedUnit = SpeedUnitMiles
-	case "meter", "meters":
-		speedUnit = SpeedUnitMeters
-	default:
-		return fmt.Errorf("Speed unit %q is invalid, please specify one of miles or meters.", *cliSpeedUnit)
+	speedUnit, err := ProcessCLISpeedUnit(*cliSpeedUnit)
+	if err != nil {
+		return err
 	}
 
-	var tempUnit TempUnit
-	switch strings.ToLower(*cliTempUnit) {
-	case "":
-		// Use the `SpeedUnit` type default.
-	case "c", "celsius":
-		tempUnit = TempUnitCelsius
-	case "f", "fahrenheit":
-		tempUnit = TempUnitFahrenheit
-	case "k", "kelvin":
-		tempUnit = TempUnitKelvin
-	default:
-		return fmt.Errorf("Temperature unit %q is invalid, please specify one of c, f, or k for Celsius, Fahrenheit, or Kelvin respectively.", *cliTempUnit)
+	tempUnit, err := ProcessCLITempUnit(*cliTempUnit)
+	if err != nil {
+		return err
 	}
 
 	wc, err := NewClient(apiKey, WithSpeedUnit(speedUnit), WithTempUnit(tempUnit))
@@ -375,4 +359,40 @@ if *cliTempUnit == "" {
 
 	fmt.Fprintln(output, forecast)
 	return nil
+}
+
+// ProcessCLISpeedUnit converts a string into a SpeedUnit* constant.
+func ProcessCLISpeedUnit(s string) (SpeedUnit, error) {
+	var u SpeedUnit
+
+	switch strings.ToLower(s) {
+	case "":
+		// Use the `SpeedUnit` type default.
+	case "mile", "miles":
+		u = SpeedUnitMiles
+	case "meter", "meters":
+		u = SpeedUnitMeters
+	default:
+		return u, fmt.Errorf("Speed unit %q is invalid, please specify one of miles or meters.", s)
+	}
+	return u, nil
+}
+
+// ProcessCLITempUnit converts a string into a SpeedUnit* constant.
+func ProcessCLITempUnit(s string) (TempUnit, error) {
+	var u TempUnit
+
+	switch strings.ToLower(s) {
+	case "":
+		// Use the `TempUnit` type default.
+	case "c", "celsius":
+		u = TempUnitCelsius
+	case "f", "fahrenheit":
+		u = TempUnitFahrenheit
+	case "k", "kelvin":
+		u = TempUnitKelvin
+	default:
+		return u, fmt.Errorf("Temperature unit %q is invalid, please specify one of c, f, or k for Celsius, Fahrenheit, or Kelvin respectively.", s)
+	}
+	return u, nil
 }

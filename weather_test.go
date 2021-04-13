@@ -94,3 +94,84 @@ func TestForecast(t *testing.T) {
 		}
 	}
 }
+func TestProcessCLISpeedUnit(t *testing.T) {
+	t.Parallel()
+
+	// Define test cases
+	testCases := []struct {
+		userInput   string
+		want        weather.SpeedUnit
+		errExpected bool
+	}{
+		{
+			userInput: "", // default case
+			want:      weather.SpeedUnitMiles,
+		},
+		{
+			userInput: "meters",
+			want:      weather.SpeedUnitMeters,
+		},
+		{
+			userInput: "miles",
+			want:      weather.SpeedUnitMiles,
+		},
+		{
+			userInput:   "feet",
+			errExpected: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		got, err := weather.ProcessCLISpeedUnit(tc.userInput)
+		if !tc.errExpected && err != nil {
+			t.Fatalf("error for user input %q: %v", tc.userInput, err)
+		}
+
+		if !tc.errExpected && tc.want != got {
+			t.Fatalf("want %q, got %q, for user input %q", tc.want, got, tc.userInput)
+		}
+	}
+}
+
+func TestProcessCLITempUnit(t *testing.T) {
+	t.Parallel()
+
+	// Define test cases
+	testCases := []struct {
+		userInput   string
+		want        weather.TempUnit
+		errExpected bool
+	}{
+		{
+			userInput: "", // default case
+			want:      weather.TempUnitFahrenheit,
+		},
+		{
+			userInput: "f",
+			want:      weather.TempUnitFahrenheit,
+		},
+		{
+			userInput: "c",
+			want:      weather.TempUnitCelsius,
+		},
+		{
+			userInput: "k",
+			want:      weather.TempUnitKelvin,
+		},
+		{
+			userInput:   "x",
+			errExpected: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		got, err := weather.ProcessCLITempUnit(tc.userInput)
+		if !tc.errExpected && err != nil {
+			t.Fatalf("error for user input %q: %v", tc.userInput, err)
+		}
+
+		if !tc.errExpected && tc.want != got {
+			t.Fatalf("want %q, got %q, for user input %q", tc.want, got, tc.userInput)
+		}
+	}
+}
