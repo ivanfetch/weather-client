@@ -31,37 +31,67 @@ type APIResponse struct {
 
 // An OpenWeatherMap.org client
 type Client struct {
-	APIKey, APIHost, APIUri string
-	HTTPClient              *http.Client
+	APIKey, APIHost, APIUri, MeasurementSystem string
+	HTTPClient                                 *http.Client
+}
+
+// An option is implemented as a function, to set the state of that option.
+type ClientOption func(*Client)
+
+func WithAPIHost(host string) ClientOption {
+	return func(c *Client) {
+		c.APIHost = host
+	}
+}
+
+func WithAPIUri(uri string) ClientOption {
+	return func(c *Client) {
+		c.APIUri = uri
+	}
+}
+
+func WithHTTPClient(hc *http.Client) ClientOption {
+	return func(c *Client) {
+		c.HTTPClient = hc
+	}
+}
+
+func WithMeasurementSystem(ms string) ClientOption {
+	return func(c *Client) {
+		c.MeasurementSystem = ms
+	}
 }
 
 // NewClient returns a pointer to a new weather client.
-func NewClient(APIKey string) *Client {
-	return &Client{
+func NewClient(APIKey string, options ...ClientOption) *Client {
+	c := &Client{
 		APIKey:  APIKey,
 		APIHost: "https://api.openweathermap.org",
 		APIUri:  "/data/2.5/forecast",
 		// This non-default client and its timeout is used
 		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
-		HTTPClient: &http.Client{Timeout: time.Second * 3},
+		HTTPClient:        &http.Client{Timeout: time.Second * 3},
+		MeasurementSystem: "imperial",
 	}
+
+	for _, o := range options {
+		o(c)
+	}
+	return c
 }
 
-// formAPIUrl accepts a city and measurement system, and returns an OpenWeatherMap.org URL.
-func (c Client) formAPIUrl(city, measurementSystem string) (string, error) {
+// formAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
+func (c Client) formAPIUrl(city string) (string, error) {
 	var APIQueryOptions string
 
-	// Validate the measurement system and convert to a weather API query-string.
-	switch strings.ToLower(measurementSystem) {
+	// Convert the measurement system to a weather API query-string.
+	switch strings.ToLower(c.MeasurementSystem) {
 	case "standard":
 		// The OpenWeatherMap.org API default is standard,
 		// so no URL query-string is required.
-	case "metric":
-		APIQueryOptions += "&units=metric"
-	case "imperial":
-		APIQueryOptions += "&units=imperial"
 	default:
-		return "", fmt.Errorf("Invalid measurement system %q while forming weather API url", measurementSystem)
+		// All other valid metric system values can be specified directly in the query-string.
+		APIQueryOptions += fmt.Sprintf("&units=%s", strings.ToLower(c.MeasurementSystem))
 	}
 
 	// Limit the weather API response to a single time-stamp.
@@ -96,12 +126,20 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 	if err != nil {
 		return APIResponse{}, err
 	}
+
+	if len(apiRes.List) == 0 {
+		return APIResponse{}, fmt.Errorf("Empty response.List while querying weather API")
+	}
+
+	if len(apiRes.List[0].Weather) == 0 {
+		return APIResponse{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
+	}
 	return apiRes, nil
 }
 
 // Forecast accepts a city and measurement system, and queries the weather API.
 func (c *Client) Forecast(city, measurementSystem string) (string, error) {
-	url, err := c.formAPIUrl(city, measurementSystem)
+	url, err := c.formAPIUrl(city)
 	if err != nil {
 		return "", fmt.Errorf("Error forming weather API URL for city %q, measurement system %q: %v", city, measurementSystem, err)
 	}
@@ -118,24 +156,17 @@ func (c *Client) Forecast(city, measurementSystem string) (string, error) {
 // formatForecast accepts an API response and measurement system,
 // and returns formatted output.
 func (c *Client) formatForecast(ar APIResponse, measurementSystem string) (string, error) {
-	if len(ar.List) == 0 {
-		return "", fmt.Errorf("Empty response.List while formatting forecast")
-	}
-
-	if len(ar.List[0].Weather) == 0 {
-		return "", fmt.Errorf("Empty response.List[0].Weather while formatting forecast")
-	}
 
 	var tempUnits, windUnits string
 	switch strings.ToLower(measurementSystem) {
 	case "standard":
-		tempUnits = "K"
+		tempUnits = "ºK"
 		windUnits = "m/s"
 	case "metric":
-		tempUnits = "C"
+		tempUnits = "ºC"
 		windUnits = "m/s"
 	case "imperial":
-		tempUnits = "F"
+		tempUnits = "ºF"
 		windUnits = "MPH"
 	default:
 		return "", fmt.Errorf("unknown measurement system while formatting forecast: %q", measurementSystem)

@@ -30,10 +30,10 @@ func TestFormAPIUrl(t *testing.T) {
 
 	t.Parallel()
 
-	wc := NewClient("DummyAPIKey")
 
 	for _, tc := range testCases {
-		got, err := wc.formAPIUrl(tc.city, tc.units)
+	wc := NewClient("DummyAPIKey", WithMeasurementSystem(tc.units))
+		got, err := wc.formAPIUrl(tc.city)
 		if err != nil {
 			t.Errorf("Error while forming API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
 		}

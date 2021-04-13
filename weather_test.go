@@ -26,7 +26,7 @@ func TestQueryAPI(t *testing.T) {
 	wc.HTTPClient = ts.Client()
 	wc.APIHost = ts.URL
 
-	want := "clear sky, temp 34.5 F (feels like 23.6 F), humidity 38.0%, wind 9.22 MPH"
+	want := "clear sky, temp 34.5 ºF (feels like 23.6 ºF), humidity 38.0%, wind 9.22 MPH"
 	got, err := wc.Forecast(testCity, testUnits)
 	if err != nil {
 		t.Errorf("Error while getting formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
