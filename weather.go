@@ -35,15 +35,15 @@ const (
 
 // speedUnitName stores friendly names for the speedUnit... constants.
 var speedUnitName = map[SpeedUnit]string{
-	SpeedUnitMiles:  "MPH",
+	SpeedUnitMiles:  "mph",
 	SpeedUnitMeters: "m/s",
 }
 
 // tempUnitName stores friendly names for the tempUnit... constants.
 var tempUnitName = map[TempUnit]string{
-	TempUnitFahrenheit: "ºF",
-	TempUnitCelsius:    "ºC",
-	TempUnitKelvin:     "ºK",
+	TempUnitFahrenheit: " ºF",
+	TempUnitCelsius:    " ºC",
+	TempUnitKelvin:     "K",
 }
 
 // conditions stores API-agnostic weather conditions.
@@ -155,7 +155,7 @@ func (c *Client) GetTempUnit() TempUnit {
 // SetSpeedUnit validates then sets the unit of speed for a weather client.
 // Valid units are in the range of `SpeedUnit...` package constants.
 func (c *Client) SetSpeedUnit(u SpeedUnit) error {
-	if u == SpeedUnitMiles || u == SpeedUnitMeters {
+	if _, found := speedUnitName[u]; found {
 		c.speedUnit = u
 	} else {
 		return fmt.Errorf("speed unit %v out of range, please use one of the SpeedUnitMeters or SpeedUnitMiles constants.\n", u)
@@ -166,7 +166,7 @@ func (c *Client) SetSpeedUnit(u SpeedUnit) error {
 // SetTempUnit validates then sets the unit of temperature for a weather client.
 // Valid units are in the range of `TempUnit...` package constants.
 func (c *Client) SetTempUnit(u TempUnit) error {
-	if u == TempUnitCelsius || u == TempUnitFahrenheit || u == TempUnitKelvin {
+	if _, found := tempUnitName[u]; found {
 		c.tempUnit = u
 	} else {
 		return fmt.Errorf("temperature unit %v out of range, please use one of the TempUnitCelsius, TempUnitFahrenheit, or TempUnitKelvin constants.\n", u)
@@ -265,12 +265,12 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 
 	var temperature string
 	if w.temperature != nil {
-		temperature = fmt.Sprintf(", temp %.1f %v", c.ConvertTemp(*w.temperature), tempUnit)
+		temperature = fmt.Sprintf(", temp %.1f%v", c.ConvertTemp(*w.temperature), tempUnit)
 	}
 
 	var feelsLike string
 	if w.feelsLike != nil {
-		feelsLike = fmt.Sprintf(", feels like %.1f %v", c.ConvertTemp(*w.feelsLike), tempUnit)
+		feelsLike = fmt.Sprintf(", feels like %.1f%v", c.ConvertTemp(*w.feelsLike), tempUnit)
 	}
 
 	var humidity string
@@ -283,7 +283,8 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 		wind = fmt.Sprintf(", wind %.1f %v", c.ConvertSpeed(*w.windSpeed), speedUnit)
 	}
 
-	forecast := fmt.Sprintf("%s%s%s%s%s", *w.description, temperature, feelsLike, humidity, wind)
+	forecast := fmt.Sprintf("%s%s%s%s%s",
+		*w.description, temperature, feelsLike, humidity, wind)
 
 	return forecast, nil
 }
@@ -309,7 +310,7 @@ func RunCLI(args []string, output, errOutput io.Writer) error {
 	cliSpeedUnit := fs.String("s", "", "Unit of measure to use when displaying wind speed (miles or meters). Also specified via the WEATHERCASTER_SPEED_UNIT environment variable. The default is miles.")
 	cliTempUnit := fs.String("t", "", "Unit of measure to use when displaying temperature (c for Celsius, f for Fahrenheit, or k for kelvin). Also specified via the WEATHERCASTER_TEMP_UNIT environment variable. The default is Fahrenheit.")
 
-	err := fs.Parse(args[1:])
+	err := fs.Parse(args)
 	if err != nil {
 		return err
 	}
@@ -361,7 +362,7 @@ func ProcessCLISpeedUnit(s string) (SpeedUnit, error) {
 	case "":
 		// Use the `SpeedUnit` type default.
 		u = SpeedUnitMiles
-	case "mile", "miles":
+	case "mi", "mile", "miles":
 		u = SpeedUnitMiles
 	case "m", "meter", "meters":
 		u = SpeedUnitMeters
