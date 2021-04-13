@@ -73,25 +73,24 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 
 	httpRes, err := c.HTTPClient.Get(url)
 	if err != nil {
-		return apiRes, err
+		return APIResponse{}, err
 	}
 
 	defer httpRes.Body.Close()
 
 	// ioutil.ReadAll() returns a slice of bytes
-	body, err := ioutil.ReadAll(httpRes.Body)
+	data, err := ioutil.ReadAll(httpRes.Body)
 	if err != nil {
-		return apiRes, err
+		return APIResponse{}, err
 	}
 
-	if httpRes.StatusCode >= 400 {
-		return apiRes, fmt.Errorf("HTTP %d returned from weather API: %v", httpRes.StatusCode, string(body))
+	if httpRes.StatusCode != http.StatusOK {
+		return apiRes, fmt.Errorf("HTTP %d returned from weather API: %v", httpRes.StatusCode, string(data))
 	}
 
-	jsonBytes := []byte(string(body))
-	err = json.Unmarshal(jsonBytes, &apiRes)
+	err = json.Unmarshal(data, &apiRes)
 	if err != nil {
-		return apiRes, err
+		return APIResponse{}, err
 	}
 	return apiRes, nil
 }
