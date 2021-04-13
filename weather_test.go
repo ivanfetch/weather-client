@@ -12,7 +12,7 @@ import (
 func TestForecast(t *testing.T) {
 	t.Parallel()
 
-	const testCity = "Great Neck Plaza,NY,US"
+	const testLocation = "Great Neck Plaza,NY,US"
 	const testFileName = "testdata/greatneck.json"
 	const wantRequestURL = "/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1"
 
@@ -70,7 +70,7 @@ func TestForecast(t *testing.T) {
 			if wantRequestURL != gotRequestURL {
 				// t.ErrorF is used because FatalF will abort the http.HandlerFunc,
 				// causing the QueryAPI test to output failure.
-				t.Errorf("Want %q, got %q comparing API URI while getting forecast for city %q", wantRequestURL, gotRequestURL, testCity)
+				t.Errorf("Want %q, got %q comparing API URI", wantRequestURL, gotRequestURL)
 			}
 		}))
 		defer ts.Close()
@@ -83,9 +83,9 @@ func TestForecast(t *testing.T) {
 		// Only get a forecast and compare results if the test-case did not expect
 		// an error from the client constructor.
 		if !tc.clientErrExpected {
-			got, err := wc.Forecast(testCity)
+			got, err := wc.Forecast(testLocation)
 			if err != nil {
-				t.Fatalf("Error while getting forecast for city %q: %v", testCity, err)
+				t.Fatalf("Error while getting forecast for location %q: %v", testLocation, err)
 			}
 
 			if tc.want != got {

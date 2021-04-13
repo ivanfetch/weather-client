@@ -173,12 +173,12 @@ func (c *Client) SetTempUnit(u TempUnit) error {
 	return nil
 }
 
-// FormAPIURL accepts a city and returns an OpenWeatherMap.org URL.
-func (c Client) FormAPIURL(city string) (string, error) {
+// FormAPIURL accepts a location and returns an OpenWeatherMap.org URL.
+func (c Client) FormAPIURL(location string) (string, error) {
 	// Limit the weather API response to a single time-stamp.
 	APIQueryOptions := "&cnt=1"
 
-	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIURI, url.QueryEscape(city), c.APIKey, APIQueryOptions)
+	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIURI, url.QueryEscape(location), c.APIKey, APIQueryOptions)
 	return u, nil
 }
 
@@ -253,16 +253,16 @@ func (c Client) queryAPI(url string) (conditions, error) {
 	return w, nil
 }
 
-// Forecast accepts a city, and queries the weather API.
-func (c *Client) Forecast(city string) (string, error) {
-	url, err := c.FormAPIURL(city)
+// Forecast accepts a location, and queries the weather API.
+func (c *Client) Forecast(location string) (string, error) {
+	url, err := c.FormAPIURL(location)
 	if err != nil {
-		return "", fmt.Errorf("Error forming weather API URL for city %q: %v", city, err)
+		return "", fmt.Errorf("Error forming weather API URL for location %q: %v", location, err)
 	}
 
 	resp, err := c.queryAPI(url)
 	if err != nil {
-		return "", fmt.Errorf("Error querying weather API for city %q: %v", city, err)
+		return "", fmt.Errorf("Error querying weather API for location %q: %v", location, err)
 	}
 
 	// The formatForecast method returns its own error.
@@ -297,7 +297,7 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 	return forecast, nil
 }
 
-// RunCLI processes CLI arguments and outputs the forecast for a given city.
+// RunCLI processes CLI arguments and outputs the forecast for a given location.
 func RunCLI(args []string) error {
 	apiKey := os.Getenv("OPENWEATHERMAP_API_KEY")
 	if apiKey == "" {
@@ -307,10 +307,10 @@ func RunCLI(args []string) error {
 
 	fs := flag.NewFlagSet("weather-caster", flag.ExitOnError)
 	fs.SetOutput(os.Stderr)
-	cliCity := fs.String("city", "", `The name of the city for which you want a weather forecast. Also specified via the WEATHERCASTER_CITY environment variable.
-	A city can be specified as:
-	"CityName" (for well-known locations)
-	"CityName,StateName,CountryCode"
+	cliLocation := fs.String("l", "", `The location for which you want a weather forecast. Also specified via the WEATHERCASTER_LOCATION environment variable.
+	A location can be specified as:
+	"LocationName" (for well-known locations, such as London)
+	"CitynName,StateName,CountryCode"
 	For example: "Great Neck Plaza,NY,US"
 `)
 
@@ -330,13 +330,13 @@ func RunCLI(args []string) error {
 		*cliTempUnit = os.Getenv("WEATHERCASTER_TEMP_UNITS")
 	}
 
-	// Use an environment variable if the city command-line flag was not specified.
-	if *cliCity == "" {
-		*cliCity = os.Getenv("WEATHERCASTER_CITY")
+	// Use an environment variable if the location command-line flag was not specified.
+	if *cliLocation == "" {
+		*cliLocation = os.Getenv("WEATHERCASTER_LOCATION")
 	}
 
-	if *cliCity == "" {
-		return fmt.Errorf("Please specify a city using either the -city command-line flag, or by setting the WEATHERCASTER_CITY environment variable.")
+	if *cliLocation == "" {
+		return fmt.Errorf("Please specify a location using either the -l command-line flag, or by setting the WEATHERCASTER_LOCATION environment variable.")
 	}
 
 	var speedUnit SpeedUnit
@@ -370,7 +370,7 @@ func RunCLI(args []string) error {
 		return fmt.Errorf("Error creating weather client: %v\n", err)
 	}
 
-	forecast, err := wc.Forecast(*cliCity)
+	forecast, err := wc.Forecast(*cliLocation)
 	if err != nil {
 		return err
 	}
