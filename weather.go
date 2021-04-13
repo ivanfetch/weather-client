@@ -80,8 +80,8 @@ func NewClient(APIKey string, options ...ClientOption) *Client {
 	return c
 }
 
-// formAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
-func (c Client) formAPIUrl(city string) (string, error) {
+// FormAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
+func (c Client) FormAPIUrl(city string) (string, error) {
 	var APIQueryOptions string
 
 	// Convert the units to a weather API query-string.
@@ -139,7 +139,7 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 
 // Forecast accepts a city, and queries the weather API.
 func (c *Client) Forecast(city string) (string, error) {
-	url, err := c.formAPIUrl(city)
+	url, err := c.FormAPIUrl(city)
 	if err != nil {
 		return "", fmt.Errorf("Error forming weather API URL for city %q: %v", city, err)
 	}

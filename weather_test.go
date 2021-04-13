@@ -19,7 +19,7 @@ func TestQueryAPI(t *testing.T) {
 	// and populate it with JSON as though served by the weather API.
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, testJSON)
-}))
+	}))
 	defer ts.Close()
 
 	wc := weather.NewClient("DummyAPIKey", weather.WithUnits(testUnits))
@@ -34,5 +34,44 @@ func TestQueryAPI(t *testing.T) {
 
 	if want != got {
 		t.Errorf("Want %q, got %q, testing formatted forecast for city %q using units %v\n", want, got, testCity, testUnits)
+	}
+}
+
+// Test FormAPIUrl more deeply than TestForecast().
+func TestFormAPIUrl(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		city, units, want string
+		errExpected       bool
+	}{
+		{
+			city:  "Great Neck Plaza,NY,US",
+			units: "standard",
+			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1",
+		},
+		{
+			city:  "Great Neck Plaza,NY,US",
+			units: "metric",
+			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=metric&cnt=1",
+		},
+		{
+			city:  "Great Neck Plaza,NY,US",
+			units: "imperial",
+			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1",
+		},
+	}
+
+	t.Parallel()
+
+	for _, tc := range testCases {
+		wc := weather.NewClient("DummyAPIKey", weather.WithUnits(tc.units))
+		got, err := wc.FormAPIUrl(tc.city)
+		if err != nil {
+			t.Fatalf("Error while forming API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
+		}
+
+		if tc.want != got {
+			t.Errorf("Want %q, got %q, forming API Url for city %s and units %v)\n", tc.want, got, tc.city, tc.units)
+		}
 	}
 }
