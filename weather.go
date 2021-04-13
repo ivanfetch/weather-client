@@ -23,7 +23,6 @@ type APIResponse struct {
 // An OpenWeatherMap.org client
 type Client struct {
 	APIKey, APIHost, APIUri, APIQueryOptions string
-	response                                 APIResponse
 }
 
 // NewClient returns a pointer to a new weather client.
@@ -76,35 +75,27 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 	return apiRes, nil
 }
 
-// ForecastByCity queries the weather API for a `city,state,country-code`,
+// Forecast queries the weather API for a `city,state,country-code`,
 // and stores the result in the Client object.
-func (c *Client) ForecastByCity(city string) (string, error) {
+func (c *Client) Forecast(city string) (string, error) {
 	res, err := c.queryAPI(c.formAPIUrl(city))
 	if err != nil {
 		return "", fmt.Errorf("Error querying weather API for city %q: %v", city, err)
 	}
 
-	c.response = res
-
-	// The GetForecast method returns its own error.
-	return c.GetForecast()
+	// The formatForecast method returns its own error.
+	return c.formatForecast(res)
 }
 
-// GetForecasts returns formatted forecast output,
-// using the last weather API result.
-func (c *Client) GetForecast() (string, error) {
-	if len(c.response.List) == 0 {
-		return "", fmt.Errorf("GetForecast() has an empty response.List")
+// formatForecasts returns formatted output from an API response.
+func (c *Client) formatForecast(ar APIResponse) (string, error) {
+	if len(ar.List) == 0 {
+		return "", fmt.Errorf("Empty response.List while formatting forecast")
 	}
 
-	if len(c.response.List[0].Weather) == 0 {
-		return "", fmt.Errorf("GetForecast() has an empty response.List[0].Weather")
+	if len(ar.List[0].Weather) == 0 {
+		return "", fmt.Errorf("Empty response.List[0].Weather while formatting forecast")
 	}
 
-	return c.response.List[0].Weather[0].Description, nil
-}
-
-// GetAPIResponse returns the response from the last query to the weather API.
-func (c Client) GetAPIResponse() APIResponse {
-	return c.response
+	return ar.List[0].Weather[0].Description, nil
 }
