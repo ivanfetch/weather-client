@@ -13,17 +13,17 @@ func TestFormAPIUrl(t *testing.T) {
 	}{
 		{
 			city:  "Great Neck Plaza,NY,US",
-			units: "k",
+			units: "standard",
 			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1",
 		},
 		{
 			city:  "Great Neck Plaza,NY,US",
-			units: "c",
+			units: "metric",
 			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=metric&cnt=1",
 		},
 		{
 			city:  "Great Neck Plaza,NY,US",
-			units: "f",
+			units: "imperial",
 			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1",
 		},
 	}

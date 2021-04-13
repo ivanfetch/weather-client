@@ -23,6 +23,9 @@ type APIResponse struct {
 			Feels_like float64
 			Humidity   float64
 		}
+		Wind struct {
+			Speed float64
+		}
 	}
 }
 
@@ -44,20 +47,21 @@ func NewClient(APIKey string) *Client {
 	}
 }
 
-// formAPIUrl accepts a city and temperature units, and returns an OpenWeatherMap.org URL.
-func (c Client) formAPIUrl(city, temperatureUnits string) (string, error) {
+// formAPIUrl accepts a city and measurement system, and returns an OpenWeatherMap.org URL.
+func (c Client) formAPIUrl(city, measurementSystem string) (string, error) {
 	var APIQueryOptions string
 
-	// Validate the temperature units and convert to a weather API query-string.
-	switch strings.ToLower(temperatureUnits) {
-	case "k":
-		// The OpenWeatherMap.org API default is kelvin.
-	case "c":
+	// Validate the measurement system and convert to a weather API query-string.
+	switch strings.ToLower(measurementSystem) {
+	case "standard":
+		// The OpenWeatherMap.org API default is standard,
+		// so no URL query-string is required.
+	case "metric":
 		APIQueryOptions += "&units=metric"
-	case "f":
+	case "imperial":
 		APIQueryOptions += "&units=imperial"
 	default:
-		return "", fmt.Errorf("Invalid temperature units %q while forming weather API url", temperatureUnits)
+		return "", fmt.Errorf("Invalid measurement system %q while forming weather API url", measurementSystem)
 	}
 
 	// Limit the weather API response to a single time-stamp.
@@ -95,12 +99,11 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 	return apiRes, nil
 }
 
-// Forecast queries the weather API for the specified `city,state,country-code`,
-// and temperature units.
-func (c *Client) Forecast(city, temperatureUnits string) (string, error) {
-	url, err := c.formAPIUrl(city, temperatureUnits)
+// Forecast accepts a city and measurement system, and queries the weather API.
+func (c *Client) Forecast(city, measurementSystem string) (string, error) {
+	url, err := c.formAPIUrl(city, measurementSystem)
 	if err != nil {
-		return "", fmt.Errorf("Error forming weather API URL for city %q, temperature units %q: %v", city, temperatureUnits, err)
+		return "", fmt.Errorf("Error forming weather API URL for city %q, measurement system %q: %v", city, measurementSystem, err)
 	}
 
 	res, err := c.queryAPI(url)
@@ -109,11 +112,12 @@ func (c *Client) Forecast(city, temperatureUnits string) (string, error) {
 	}
 
 	// The formatForecast method returns its own error.
-	return c.formatForecast(res)
+	return c.formatForecast(res, measurementSystem)
 }
 
-// formatForecast accepts an API response and returns formatted output.
-func (c *Client) formatForecast(ar APIResponse) (string, error) {
+// formatForecast accepts an API response and measurement system,
+// and returns formatted output.
+func (c *Client) formatForecast(ar APIResponse, measurementSystem string) (string, error) {
 	if len(ar.List) == 0 {
 		return "", fmt.Errorf("Empty response.List while formatting forecast")
 	}
@@ -122,6 +126,26 @@ func (c *Client) formatForecast(ar APIResponse) (string, error) {
 		return "", fmt.Errorf("Empty response.List[0].Weather while formatting forecast")
 	}
 
-	forecast := fmt.Sprintf("%s, temp %.1f (feels like %.1f), humidity %.1f%%", ar.List[0].Weather[0].Description, ar.List[0].Main.Temp, ar.List[0].Main.Feels_like, ar.List[0].Main.Humidity)
+	var tempUnits, windUnits string
+	switch strings.ToLower(measurementSystem) {
+	case "standard":
+		tempUnits = "K"
+		windUnits = "m/s"
+	case "metric":
+		tempUnits = "C"
+		windUnits = "m/s"
+	case "imperial":
+		tempUnits = "F"
+		windUnits = "MPH"
+	default:
+		return "", fmt.Errorf("unknown measurement system while formatting forecast: %q", measurementSystem)
+	}
+
+	forecast := fmt.Sprintf("%s, temp %.1f %v (feels like %.1f %v), humidity %.1f%%", ar.List[0].Weather[0].Description, ar.List[0].Main.Temp, tempUnits, ar.List[0].Main.Feels_like, tempUnits, ar.List[0].Main.Humidity)
+
+	if ar.List[0].Wind.Speed > 0 {
+		forecast += fmt.Sprintf(", wind %v %v", ar.List[0].Wind.Speed, windUnits)
+	}
+
 	return forecast, nil
 }
