@@ -29,6 +29,7 @@ type APIResponse struct {
 // An OpenWeatherMap.org client
 type Client struct {
 	APIKey, APIHost, APIUri string
+	HTTPClient              *http.Client
 }
 
 // NewClient returns a pointer to a new weather client.
@@ -37,6 +38,9 @@ func NewClient(APIKey string) *Client {
 		APIKey:  APIKey,
 		APIHost: "api.openweathermap.org",
 		APIUri:  "/data/2.5/forecast",
+		// This non-default client and its timeout is used
+		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
+		HTTPClient: &http.Client{Timeout: time.Second * 3},
 	}
 }
 
@@ -67,10 +71,7 @@ func (c Client) formAPIUrl(city, temperatureUnits string) (string, error) {
 func (c Client) queryAPI(url string) (APIResponse, error) {
 	var apiRes APIResponse
 
-	// This non-default client and its timeout is used
-	// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
-	httpClient := http.Client{Timeout: time.Second * 3}
-	httpRes, err := httpClient.Get(url)
+	httpRes, err := c.HTTPClient.Get(url)
 	if err != nil {
 		return apiRes, err
 	}
