@@ -25,7 +25,7 @@ func main() {
 
 	wc := weather.NewClient(apiKey)
 
-	forecast,err := wc.ForecastByCity(city)
+	forecast, err := wc.ForecastByCity(city)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
@@ -33,5 +33,5 @@ func main() {
 
 	fmt.Printf("The brief weather forecast is %s\n", forecast)
 
-	fmt.Printf("The full API response is: %+v\n", wc.GetApiResponse())
+	fmt.Printf("The full API response is: %+v\n", wc.GetAPIResponse())
 }

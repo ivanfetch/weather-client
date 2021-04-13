@@ -13,50 +13,43 @@ import (
 // Multiple structs representing nested json from the OpenWeatherMap.org API,
 // which match output from its `/2.5/forecast` URI.
 // These are defined inside-out, starting with the most inner data.
-type ApiResponseListWeather struct {
+type APIResponseListWeather struct {
 	Description string
 }
-type ApiResponseList struct {
-	Weather []ApiResponseListWeather
+type APIResponseList struct {
+	Weather []APIResponseListWeather
 }
-type ApiResponse struct {
-	List []ApiResponseList
+type APIResponse struct {
+	List []APIResponseList
 }
 
 // An OpenWeatherMap.org client
 type Client struct {
-	ApiKey, ApiHost, ApiUri, ApiQueryOptions string
-	response                                 ApiResponse
+	APIKey, APIHost, APIUri, APIQueryOptions string
+	response                                 APIResponse
 }
 
 // NewClient returns a pointer to a new weather client.
-func NewClient(apiKey string) *Client {
-	var c Client
-
-	c.ApiKey = apiKey
-	// Set other OpenWeatherMap.org defaults
-	c.ApiHost = "api.openweathermap.org"
-	c.ApiUri = "/data/2.5/forecast"
-	// Additional API query options to always include, for now.
-	// Some of these will eventually become configurable.
-	// The `cnt` limits how many time-stamps are returned.
-	// ref: https://openweathermap.org/forecast5#limit
-	c.ApiQueryOptions = "&units=imperial&cnt=1"
-
-	return &c
+func NewClient(APIKey string) *Client {
+	return &Client{
+		APIKey:          APIKey,
+		APIHost:         "api.openweathermap.org",
+		APIUri:          "/data/2.5/forecast",
+		APIQueryOptions: "&units=imperial&cnt=1",
+	}
 }
 
 // formAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
 func (c Client) formAPIUrl(city string) string {
 	// This will eventually vary the URL using client configuration,
 	// E.G. temperature units.
-	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", c.ApiHost, c.ApiUri, url.QueryEscape(city), c.ApiKey, c.ApiQueryOptions)
+	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIUri, url.QueryEscape(city), c.APIKey, c.APIQueryOptions)
 	return u
 }
 
 // queryAPI accepts an OpenWeatherMap.org URL and queries its API.
-func (c Client) queryAPI(url string) (ApiResponse, error) {
-	var apiRes ApiResponse
+func (c Client) queryAPI(url string) (APIResponse, error) {
+	var apiRes APIResponse
 
 	// This non-default client and its timeout is used
 	// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
@@ -114,7 +107,7 @@ func (c *Client) GetForecast() (string, error) {
 	return c.response.List[0].Weather[0].Description, nil
 }
 
-// GetApiResponse returns the response from the last query to the weather API.
-func (c Client) GetApiResponse() ApiResponse {
+// GetAPIResponse returns the response from the last query to the weather API.
+func (c Client) GetAPIResponse() APIResponse {
 	return c.response
 }
