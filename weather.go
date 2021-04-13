@@ -110,22 +110,14 @@ func WithHTTPClient(hc *http.Client) ClientOption {
 // WithSpeedUnit sets the corresponding weather.client option.
 func WithSpeedUnit(u SpeedUnit) ClientOption {
 	return func(c *Client) error {
-		err := c.SetSpeedUnit(u)
-		if err != nil {
-			return err
-		}
-		return nil
+		return c.SetSpeedUnit(u)
 	}
 }
 
 // WithTempUnit sets the corresponding weather.client option.
 func WithTempUnit(u TempUnit) ClientOption {
 	return func(c *Client) error {
-		err := c.SetTempUnit(u)
-		if err != nil {
-			return err
-		}
-		return nil
+		return c.SetTempUnit(u)
 	}
 }
 
