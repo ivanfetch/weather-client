@@ -75,7 +75,12 @@ func TestForecast(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		wc, err := weather.NewClient("DummyAPIKey", weather.WithSpeedUnit(tc.setSpeedUnit), weather.WithTempUnit(tc.setTempUnit), weather.WithHTTPClient(ts.Client()), weather.WithAPIHost(ts.URL))
+		wc, err := weather.NewClient("DummyAPIKey",
+			weather.WithSpeedUnit(tc.setSpeedUnit),
+			weather.WithTempUnit(tc.setTempUnit),
+			weather.WithHTTPClient(ts.Client()),
+			weather.WithAPIHost(ts.URL),
+		)
 		if !tc.clientErrExpected && err != nil {
 			t.Fatalf("Error while instanciating weather client for test %v: %v", tc.description, err)
 		}

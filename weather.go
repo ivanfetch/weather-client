@@ -80,11 +80,11 @@ type Client struct {
 	HTTPClient              *http.Client
 }
 
-// ClientOption specifies weather.client options as functions.
-type ClientOption func(*Client) error
+// clientOption specifies weather.client options as functions.
+type clientOption func(*Client) error
 
 // WithAPIHost sets the corresponding weather.client option.
-func WithAPIHost(host string) ClientOption {
+func WithAPIHost(host string) clientOption {
 	return func(c *Client) error {
 		c.APIHost = host
 		return nil
@@ -92,7 +92,7 @@ func WithAPIHost(host string) ClientOption {
 }
 
 // WithAPIURI sets the corresponding weather.client option.
-func WithAPIURI(uri string) ClientOption {
+func WithAPIURI(uri string) clientOption {
 	return func(c *Client) error {
 		c.APIURI = uri
 		return nil
@@ -100,7 +100,7 @@ func WithAPIURI(uri string) ClientOption {
 }
 
 // WithHTTPClient sets the corresponding weather.client option.
-func WithHTTPClient(hc *http.Client) ClientOption {
+func WithHTTPClient(hc *http.Client) clientOption {
 	return func(c *Client) error {
 		c.HTTPClient = hc
 		return nil
@@ -108,14 +108,14 @@ func WithHTTPClient(hc *http.Client) ClientOption {
 }
 
 // WithSpeedUnit sets the corresponding weather.client option.
-func WithSpeedUnit(u SpeedUnit) ClientOption {
+func WithSpeedUnit(u SpeedUnit) clientOption {
 	return func(c *Client) error {
 		return c.SetSpeedUnit(u)
 	}
 }
 
 // WithTempUnit sets the corresponding weather.client option.
-func WithTempUnit(u TempUnit) ClientOption {
+func WithTempUnit(u TempUnit) clientOption {
 	return func(c *Client) error {
 		return c.SetTempUnit(u)
 	}
@@ -123,7 +123,7 @@ func WithTempUnit(u TempUnit) ClientOption {
 
 // NewClient accepts an OpenWeatherMap API key and calls to functional options,
 // and returns a pointer to a new weather client.
-func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
+func NewClient(APIKey string, options ...clientOption) (*Client, error) {
 	c := &Client{
 		APIKey:  APIKey,
 		APIHost: "https://api.openweathermap.org",
@@ -360,9 +360,10 @@ func ProcessCLISpeedUnit(s string) (SpeedUnit, error) {
 	switch strings.ToLower(s) {
 	case "":
 		// Use the `SpeedUnit` type default.
+		u = SpeedUnitMiles
 	case "mile", "miles":
 		u = SpeedUnitMiles
-	case "meter", "meters":
+	case "m", "meter", "meters":
 		u = SpeedUnitMeters
 	default:
 		return u, fmt.Errorf("Speed unit %q is invalid, please specify one of miles or meters.", s)
@@ -377,6 +378,7 @@ func ProcessCLITempUnit(s string) (TempUnit, error) {
 	switch strings.ToLower(s) {
 	case "":
 		// Use the `TempUnit` type default.
+		u = TempUnitFahrenheit
 	case "c", "celsius":
 		u = TempUnitCelsius
 	case "f", "fahrenheit":
