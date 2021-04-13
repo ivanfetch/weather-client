@@ -54,54 +54,47 @@ func (c Client) formAPIUrl(city string) string {
 }
 
 // Send an HTTP GET request.
-func (c Client) queryAPI(url string) (string, error) {
+func (c Client) queryAPI(url string) (ApiResponse, error) {
+	var apiRes ApiResponse
+
 	// This client and its timeout is used
 	// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
 	httpClient := http.Client{Timeout: time.Second * 3}
-	res, err := httpClient.Get(url)
+	httpRes, err := httpClient.Get(url)
 	if err != nil {
-		return "", err
+		return apiRes, err
 	}
 
-		defer res.Body.Close()
+	defer httpRes.Body.Close()
 
 	// ioutil.ReadAll() returns a slice of bytes
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(httpRes.Body)
 	if err != nil {
-		return "", err
+		return apiRes, err
 	}
 
-	if res.StatusCode >= 400 {
-		return "", fmt.Errorf("HTTP %d returned from weather API: %v", res.StatusCode, string(body))
+	if httpRes.StatusCode >= 400 {
+		return apiRes, fmt.Errorf("HTTP %d returned from weather API: %v", httpRes.StatusCode, string(body))
 	}
 
-	return string(body), nil
-}
-
-// Parse JSON returned from the weather API,
-// storing the response in the weather client.
-func (c *Client) parseJson(j string) error {
-	jsonBytes := []byte(j)
-	err := json.Unmarshal(jsonBytes, &c.response)
+	jsonBytes := []byte(string(body))
+	err = json.Unmarshal(jsonBytes, &apiRes)
 	if err != nil {
-		return err
+		return apiRes, err
 	}
-
-	return nil
+	return apiRes, nil
 }
 
 // QueryCity queries the weather API for a `city,state,country-code`,
 // and stores the result in the Client object.
 func (c *Client) ForecastByCity(city string) (string, error) {
-	json, err := c.queryAPI(c.formAPIUrl(city))
+	res, err := c.queryAPI(c.formAPIUrl(city))
 	if err != nil {
 		return "", fmt.Errorf("Error querying weather API for city %q: %v", city, err)
 	}
 
-	err = c.parseJson(json)
-	if err != nil {
-		return "", fmt.Errorf("Error parsing json result from querying weather API for city %q: %v", city, err)
-	}
+	c.response = res
+
 	return c.GetForecast(), nil
 }
 

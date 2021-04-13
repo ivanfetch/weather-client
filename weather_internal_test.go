@@ -25,29 +25,3 @@ func TestFormAPIUrl(t *testing.T) {
 		t.Errorf("Want %q, got %q, testing formUrl(%s, %s)\n", want, got, testApiKey, testCity)
 	}
 }
-
-func TestParseJson(t *testing.T) {
-	t.Parallel()
-
-	client := NewClient(testApiKey)
-
-	json := `{"cod":"200","message":0,"cnt":1,"list":[{"dt":1616220000,"main":{"temp":34.47,"feels_like":23.59,"temp_min":33.94,"temp_max":34.47,"pressure":1031,"sea_level":1031,"grnd_level":1027,"humidity":38,"temp_kf":0.29},"weather":[{"id":800,"main":"Clear","description":"clear sky","icon":"01n"}],"clouds":{"all":1},"wind":{"speed":9.22,"deg":5},"visibility":10000,"pop":0,"sys":{"pod":"n"},"dt_txt":"2021-03-20 06:00:00"}],"city":{"id":5119226,"name":"Great Neck Plaza","coord":{"lat":40.7868,"lon":-73.7265},"country":"US","population":6707,"timezone":-14400,"sunrise":1616151573,"sunset":1616195137}}`
-	// Ideally I populate `want` more directly,
-	// E.G. want := &ApiResponse{List:[{Weather:[{Description:clear sky}]}]}
-	// but I can't quite get that syntax correct, so...:
-	//
-	// Construct each layer of `want`.
-	want := ApiResponse{}
-	want.List = make([]ApiResponseList, 1)
-	want.List[0].Weather = make([]ApiResponseListWeather, 1)
-	want.List[0].Weather[0].Description = "clear sky"
-
-	err := client.parseJson(json)
-	if err != nil {
-		t.Errorf("Error while calling parseJson(%v): %v\n", json, err)
-	}
-	got := client.GetApiResponse()
-	if !cmp.Equal(want, got) {
-		t.Errorf("want %+v, got %+v, calling parseJson(%v)\n", want, got, json)
-	}
-}
