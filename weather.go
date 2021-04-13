@@ -10,17 +10,14 @@ import (
 	"time"
 )
 
-// Multiple structs representing nested json from the OpenWeatherMap.org API,
-// which match output from its `/2.5/forecast` URI.
-// These are defined inside-out, starting with the most inner data.
-type APIResponseListWeather struct {
-	Description string
-}
-type APIResponseList struct {
-	Weather []APIResponseListWeather
-}
+// APIResponse matches fields from the OpenWeatherMap.org API `/2.5/forecast`.
+// This does not fully mirror the API!
 type APIResponse struct {
-	List []APIResponseList
+	List []struct {
+		Weather []struct {
+			Description string
+		}
+	}
 }
 
 // An OpenWeatherMap.org client
