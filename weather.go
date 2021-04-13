@@ -46,7 +46,7 @@ var tempUnitName = map[TempUnit]string{
 	TempUnitKelvin:     "ºK",
 }
 
-// conditions stores API-agnostic weather information.
+// conditions stores API-agnostic weather conditions.
 type conditions struct {
 	description            *string
 	temperature, feelsLike *float64
@@ -129,7 +129,8 @@ func WithTempUnit(u TempUnit) ClientOption {
 	}
 }
 
-// NewClient returns a pointer to a new weather client.
+// NewClient accepts an OpenWeatherMap API key and calls to functional options,
+// and returns a pointer to a new weather client.
 func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	c := &Client{
 		APIKey:  APIKey,
@@ -149,17 +150,17 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	return c, nil
 }
 
-// GetSpeedUnit returns the configured speed unit for a weather client.
+// GetSpeedUnit returns the configured unit of speed for a weather client.
 func (c *Client) GetSpeedUnit() SpeedUnit {
 	return c.speedUnit
 }
 
-// GetTempUnit returns the configured temperature unit for a weather client.
+// GetTempUnit returns the configured unit of temperature for a weather client.
 func (c *Client) GetTempUnit() TempUnit {
 	return c.tempUnit
 }
 
-// SetSpeedUnit validates then sets the speed unit for the weather client.
+// SetSpeedUnit validates then sets the unit of speed for a weather client.
 // Valid units are in the range of `SpeedUnit...` package constants.
 func (c *Client) SetSpeedUnit(u SpeedUnit) error {
 	if u == SpeedUnitMiles || u == SpeedUnitMeters {
@@ -170,7 +171,7 @@ func (c *Client) SetSpeedUnit(u SpeedUnit) error {
 	return nil
 }
 
-// SetTempUnit validates then sets the temperature unit for the weather client.
+// SetTempUnit validates then sets the unit of temperature for a weather client.
 // Valid units are in the range of `TempUnit...` package constants.
 func (c *Client) SetTempUnit(u TempUnit) error {
 	if u == TempUnitCelsius || u == TempUnitFahrenheit || u == TempUnitKelvin {
@@ -181,7 +182,7 @@ func (c *Client) SetTempUnit(u TempUnit) error {
 	return nil
 }
 
-// ConvertTemp converts a temperature from Kelvin to the unit set in the weather client.
+// ConvertTemp converts Kelvin temperature to the unit set in a weatherclient.
 func (c Client) ConvertTemp(kelvin float64) float64 {
 	var t float64
 	switch c.tempUnit {
@@ -196,7 +197,7 @@ func (c Client) ConvertTemp(kelvin float64) float64 {
 	return t
 }
 
-// ConvertSpeed converts a speed from meters/sec to the unit set in the weather client.
+// ConvertSpeed converts a speed from meters/sec to the unit set in a weather client.
 func (c Client) ConvertSpeed(meters float64) float64 {
 	var s float64
 	switch c.speedUnit {
@@ -209,7 +210,7 @@ func (c Client) ConvertSpeed(meters float64) float64 {
 	return s
 }
 
-// queryAPI accepts an OpenWeatherMap.org URL and queries its API.
+// queryAPI accepts an OpenWeatherMap.org URL and returns weather conditions.
 func (c Client) queryAPI(url string) (conditions, error) {
 	resp, err := c.HTTPClient.Get(url)
 	if err != nil {
@@ -225,7 +226,8 @@ func (c Client) queryAPI(url string) (conditions, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return conditions{}, fmt.Errorf("HTTP %s returned from weather API: %v", resp.Status, string(data))
+// Including the HTTP body can help by providing a message from the weather API.
+return conditions{}, fmt.Errorf("HTTP %s returned from weather API: %v", resp.Status, string(data))
 	}
 
 	var ar owmResponse
@@ -243,7 +245,6 @@ func (c Client) queryAPI(url string) (conditions, error) {
 	}
 
 	return conditions{
-
 		description: ar.List[0].Weather[0].Description,
 		temperature: ar.List[0].Main.Temp,
 		feelsLike:   ar.List[0].Main.Feels_like,
@@ -252,7 +253,7 @@ func (c Client) queryAPI(url string) (conditions, error) {
 	}, nil
 }
 
-// Forecast accepts a location and queries the weather API.
+// Forecast accepts a location and returns a forecast.
 func (c *Client) Forecast(location string) (string, error) {
 	url := fmt.Sprintf("%s%s/?q=%s&appid=%s&cnt=1", c.APIHost, c.APIURI, url.QueryEscape(location), c.APIKey)
 
@@ -265,25 +266,28 @@ func (c *Client) Forecast(location string) (string, error) {
 	return c.formatForecast(resp)
 }
 
-// formatForecast accepts weather conditions and returns formatted output.
+// formatForecast accepts weather conditions and returns formatted text.
 func (c *Client) formatForecast(w conditions) (string, error) {
 	tempUnit := tempUnitName[c.tempUnit]
 	speedUnit := speedUnitName[c.speedUnit]
-	var temperature, feelsLike, humidity, wind string
 
+	var temperature string
 	if w.temperature != nil {
 		temperature = fmt.Sprintf(", temp %.1f %v", c.ConvertTemp(*w.temperature), tempUnit)
 	}
 
-	if w.feelsLike != nil {
+var feelsLike string
+if w.feelsLike != nil {
 		feelsLike = fmt.Sprintf(", feels like %.1f %v", c.ConvertTemp(*w.feelsLike), tempUnit)
 	}
 
-	if w.humidity != nil {
+var humidity string
+if w.humidity != nil {
 		humidity = fmt.Sprintf(", humidity %.1f%%", *w.humidity)
 	}
 
-	if w.windSpeed != nil {
+var wind string
+if w.windSpeed != nil {
 		wind = fmt.Sprintf(", wind %.1f %v", c.ConvertSpeed(*w.windSpeed), speedUnit)
 	}
 
@@ -293,7 +297,7 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 }
 
 // RunCLI accepts CLI arguments, and output and error io.Writers,
-// and outputs the forecast for a given location.
+// and supplies the forecast for the location in `args`.
 func RunCLI(args []string, output, errOutput io.Writer) error {
 	apiKey := os.Getenv("OPENWEATHERMAP_API_KEY")
 	if apiKey == "" {
@@ -318,15 +322,13 @@ func RunCLI(args []string, output, errOutput io.Writer) error {
 		return err
 	}
 
-	// Use an environment variable if the unit command-line flags were not specified.
-	if *cliSpeedUnit == "" {
+	// Use environment variables if command-line flags were not specified.
+if *cliSpeedUnit == "" {
 		*cliSpeedUnit = os.Getenv("WEATHERCASTER_SPEED_UNIT")
 	}
-	if *cliTempUnit == "" {
+if *cliTempUnit == "" {
 		*cliTempUnit = os.Getenv("WEATHERCASTER_TEMP_UNIT")
 	}
-
-	// Use an environment variable if the location command-line flag was not specified.
 	if *cliLocation == "" {
 		*cliLocation = os.Getenv("WEATHERCASTER_LOCATION")
 	}
