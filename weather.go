@@ -36,7 +36,7 @@ type Client struct {
 func NewClient(APIKey string) *Client {
 	return &Client{
 		APIKey:  APIKey,
-		APIHost: "api.openweathermap.org",
+		APIHost: "https://api.openweathermap.org",
 		APIUri:  "/data/2.5/forecast",
 		// This non-default client and its timeout is used
 		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
@@ -51,7 +51,7 @@ func (c Client) formAPIUrl(city, temperatureUnits string) (string, error) {
 	// Validate the temperature units and convert to a weather API query-string.
 	switch strings.ToLower(temperatureUnits) {
 	case "k":
-		APIQueryOptions += "&units=kelvin"
+		// The OpenWeatherMap.org API default is kelvin.
 	case "c":
 		APIQueryOptions += "&units=metric"
 	case "f":
@@ -63,7 +63,7 @@ func (c Client) formAPIUrl(city, temperatureUnits string) (string, error) {
 	// Limit the weather API response to a single time-stamp.
 	APIQueryOptions += "&cnt=1"
 
-	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIUri, url.QueryEscape(city), c.APIKey, APIQueryOptions)
+	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIUri, url.QueryEscape(city), c.APIKey, APIQueryOptions)
 	return u, nil
 }
 
