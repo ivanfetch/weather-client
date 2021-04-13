@@ -47,13 +47,13 @@ func NewClient(apiKey string) *Client {
 
 // Given a city to query,
 // return a weather API URL.
-func (c Client) FormUrl(city string) string {
+func (c Client) formAPIUrl(city string) string {
 	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", c.ApiHost, c.ApiUri, url.QueryEscape(city), c.ApiKey, c.ApiQueryOptions)
 	return u
 }
 
 // Send an HTTP GET request.
-func (c Client) HttpGet(url string) (string, error) {
+func (c Client) queryAPI(url string) (string, error) {
 	httpClient := http.Client{}
 	res, err := httpClient.Get(url)
 	if err != nil {
@@ -71,7 +71,7 @@ func (c Client) HttpGet(url string) (string, error) {
 	}
 
 	if res.StatusCode >= 400 {
-		return "", fmt.Errorf("HTTP %d returned from weather API: %v\n", res.StatusCode, string(body))
+		return "", fmt.Errorf("HTTP %d returned from weather API: %v", res.StatusCode, string(body))
 	}
 
 	return string(body), nil
@@ -79,7 +79,7 @@ func (c Client) HttpGet(url string) (string, error) {
 
 // Parse JSON returned from the weather API,
 // storing the response in the weather client.
-func (c *Client) ParseJson(j string) error {
+func (c *Client) parseJson(j string) error {
 	jsonBytes := []byte(j)
 	err := json.Unmarshal(jsonBytes, &c.response)
 	if err != nil {
@@ -89,9 +89,24 @@ func (c *Client) ParseJson(j string) error {
 	return nil
 }
 
+// QueryCity queries the weather API for a `city,state,country-code`,
+// and stores the result in the Client object.
+func (c *Client) ForecastByCity(city string) (string, error) {
+	json, err := c.queryAPI(c.formAPIUrl(city))
+	if err != nil {
+		return "", fmt.Errorf("Error querying weather API for city %q: %v", city, err)
+	}
+
+	err = c.parseJson(json)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing json result from querying weather API for city %q: %v", city, err)
+	}
+	return c.GetForecast(), nil
+}
+
 // Return the weather description,
 // from the last query to the weather API.
-func (c *Client) GetDescription() string {
+func (c *Client) GetForecast() string {
 	return c.response.List[0].Weather[0].Description
 }
 
