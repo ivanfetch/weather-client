@@ -4,24 +4,42 @@ import (
 	"testing"
 )
 
+// Test formAPIUrl, as the test for Forecast() ignores the URI.
 func TestFormAPIUrl(t *testing.T) {
-	// THis may turn into a table-test to test multiple units,
-	// if this test ends up being kept.
-	const testCity = "Great Neck Plaza,NY,US"
-	const testUnits = "f"
+	// Define test cases
+	testCases := []struct {
+		city, units, want string
+		errExpected       bool
+	}{
+		{
+			city:  "Great Neck Plaza,NY,US",
+			units: "k",
+			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1",
+		},
+		{
+			city:  "Great Neck Plaza,NY,US",
+			units: "c",
+			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=metric&cnt=1",
+		},
+		{
+			city:  "Great Neck Plaza,NY,US",
+			units: "f",
+			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1",
+		},
+	}
 
 	t.Parallel()
 
-	client := NewClient("DummyAPIKey")
+	wc := NewClient("DummyAPIKey")
 
-	want := "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1"
-	got, err := client.formAPIUrl(testCity, testUnits)
+	for _, tc := range testCases {
+		got, err := wc.formAPIUrl(tc.city, tc.units)
+		if err != nil {
+			t.Errorf("Error while forming API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
+		}
 
-	if err != nil {
-		t.Errorf("Errorwhile testing formAPIUrl(%s, %s): %v\n", testCity, testUnits, err)
-	}
-
-	if want != got {
-		t.Errorf("Want %q, got %q, testing formAPIUrl(%s, %s)\n", want, got, testCity, testUnits)
+		if tc.want != got {
+			t.Errorf("Want %q, got %q, forming API Url for city %s and units %v)\n", tc.want, got, tc.city, tc.units)
+		}
 	}
 }
