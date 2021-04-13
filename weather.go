@@ -29,7 +29,7 @@ type Client struct {
 	response                                 ApiResponse
 }
 
-// Return a pointer to a new weather client.
+// NewClient returns a pointer to a new weather client.
 func NewClient(apiKey string) *Client {
 	var c Client
 
@@ -46,18 +46,19 @@ func NewClient(apiKey string) *Client {
 	return &c
 }
 
-// Given a city to query,
-// return a weather API URL.
+// formAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
 func (c Client) formAPIUrl(city string) string {
+	// This will eventually vary the URL using client configuration,
+	// E.G. temperature units.
 	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", c.ApiHost, c.ApiUri, url.QueryEscape(city), c.ApiKey, c.ApiQueryOptions)
 	return u
 }
 
-// Send an HTTP GET request.
+// queryAPI accepts an OpenWeatherMap.org URL and queries its API.
 func (c Client) queryAPI(url string) (ApiResponse, error) {
 	var apiRes ApiResponse
 
-	// This client and its timeout is used
+	// This non-default client and its timeout is used
 	// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
 	httpClient := http.Client{Timeout: time.Second * 3}
 	httpRes, err := httpClient.Get(url)
@@ -85,7 +86,7 @@ func (c Client) queryAPI(url string) (ApiResponse, error) {
 	return apiRes, nil
 }
 
-// QueryCity queries the weather API for a `city,state,country-code`,
+// ForecastByCity queries the weather API for a `city,state,country-code`,
 // and stores the result in the Client object.
 func (c *Client) ForecastByCity(city string) (string, error) {
 	res, err := c.queryAPI(c.formAPIUrl(city))
@@ -95,25 +96,25 @@ func (c *Client) ForecastByCity(city string) (string, error) {
 
 	c.response = res
 
-	// The GetForecast method returns its own error
+	// The GetForecast method returns its own error.
 	return c.GetForecast()
 }
 
-// GetForecasts returns formatted forecast output
-// from the last query to the weather API.
+// GetForecasts returns formatted forecast output,
+// using the last weather API result.
 func (c *Client) GetForecast() (string, error) {
 	if len(c.response.List) == 0 {
 		return "", fmt.Errorf("GetForecast() has an empty response.List")
 	}
 
 	if len(c.response.List[0].Weather) == 0 {
-		return "", fmt.Errorf("GetForecast() has an empty response.List.Weather")
+		return "", fmt.Errorf("GetForecast() has an empty response.List[0].Weather")
 	}
 
 	return c.response.List[0].Weather[0].Description, nil
 }
 
-// Return the response from the last query to the weather API.
+// GetApiResponse returns the response from the last query to the weather API.
 func (c Client) GetApiResponse() ApiResponse {
 	return c.response
 }
