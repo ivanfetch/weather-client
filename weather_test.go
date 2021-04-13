@@ -9,6 +9,55 @@ import (
 	"weather"
 )
 
+func TestSetUnits(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		units, want string
+		errExpected bool
+	}{
+		{
+			units: "si",
+			want:  "si",
+		},
+		{
+			units: "MeTrIc",
+			want:  "metric",
+		},
+		{
+			units: "Imperial",
+			want:  "imperial",
+		},
+		{
+			units: "",
+			want:  "imperial",
+		},
+		{
+			units:       "kelvin",
+			want:        "failure test case",
+			errExpected: true,
+		},
+	}
+
+	t.Parallel()
+
+	wc, err := weather.NewClient("DummyAPIKey")
+	if err != nil {
+		t.Fatalf("Error while instanciating weather client to test setting units: %v", err)
+	}
+
+	for _, tc := range testCases {
+		err := wc.SetUnits(tc.units)
+		if !tc.errExpected && err != nil {
+			t.Fatalf("Error while testing setting units to %q: %v", tc.units, err)
+		}
+
+		got := wc.GetUnits()
+		if !tc.errExpected && tc.want != got {
+			t.Errorf("Want %q, got %q, testing setting units to %q", tc.want, got, tc.units)
+		}
+	}
+}
+
 func TestQueryAPI(t *testing.T) {
 	const testCity = "Great Neck Plaza,NY,US"
 	const testUnits = "imperial"

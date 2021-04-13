@@ -17,9 +17,17 @@ const (
 	defaultUnits = "imperial"
 )
 
-// APIResponse matches fields from the OpenWeatherMap.org API `/2.5/forecast`.
+// weatherConditions stores API-agnostic weather information.
+type weatherConditions struct {
+	description            string
+	temperature, feelsLike float64
+	humidity               float64
+	windSpeed              float64
+}
+
+// OWMResponse matches fields from the OpenWeatherMap.org API `/2.5/forecast`.
 // This does not fully mirror the API!
-type APIResponse struct {
+type OWMResponse struct {
 	List []struct {
 		Weather []struct {
 			Description string
@@ -35,7 +43,7 @@ type APIResponse struct {
 	}
 }
 
-// An OpenWeatherMap.org client
+// A weather client
 type Client struct {
 	APIKey, APIHost, APIURI, units string
 	HTTPClient                     *http.Client
@@ -96,6 +104,11 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	return c, nil
 }
 
+// GetUnits returns the nonexported Client.units.
+func (c *Client) GetUnits() string {
+	return c.units
+}
+
 // SetUnits validates then sets the units for the weather client.
 func (c *Client) SetUnits(u string) error {
 	units := strings.ToLower(u)
@@ -142,12 +155,10 @@ func (c Client) FormAPIURL(city string) (string, error) {
 }
 
 // queryAPI accepts an OpenWeatherMap.org URL and queries its API.
-func (c Client) queryAPI(url string) (APIResponse, error) {
-	var apiRespp APIResponse
-
+func (c Client) queryAPI(url string) (weatherConditions, error) {
 	resp, err := c.HTTPClient.Get(url)
 	if err != nil {
-		return APIResponse{}, err
+		return weatherConditions{}, err
 	}
 
 	defer resp.Body.Close()
@@ -155,26 +166,35 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 	// ioutil.ReadAll() returns a slice of bytes
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return APIResponse{}, err
+		return weatherConditions{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return apiRespp, fmt.Errorf("HTTP %d returned from weather API: %v", resp.StatusCode, string(data))
+		return weatherConditions{}, fmt.Errorf("HTTP %d returned from weather API: %v", resp.StatusCode, string(data))
 	}
 
-	err = json.Unmarshal(data, &apiRespp)
+	var ar OWMResponse
+	err = json.Unmarshal(data, &ar)
 	if err != nil {
-		return APIResponse{}, err
+		return weatherConditions{}, err
 	}
 
-	if len(apiRespp.List) == 0 {
-		return APIResponse{}, fmt.Errorf("Empty response.List while querying weather API")
+	if len(ar.List) == 0 {
+		return weatherConditions{}, fmt.Errorf("Empty response.List while querying weather API")
 	}
 
-	if len(apiRespp.List[0].Weather) == 0 {
-		return APIResponse{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
+	if len(ar.List[0].Weather) == 0 {
+		return weatherConditions{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
 	}
-	return apiRespp, nil
+
+	var w weatherConditions
+	w.description = ar.List[0].Weather[0].Description
+	w.temperature = ar.List[0].Main.Temp
+	w.feelsLike = ar.List[0].Main.Feels_like
+	w.humidity = ar.List[0].Main.Humidity
+	w.windSpeed = ar.List[0].Wind.Speed
+
+	return w, nil
 }
 
 // Forecast accepts a city, and queries the weather API.
@@ -223,14 +243,14 @@ func (c *Client) tempUnits() string {
 
 // formatForecast accepts an API response,
 // and returns formatted output.
-func (c *Client) formatForecast(ar APIResponse) (string, error) {
+func (c *Client) formatForecast(w weatherConditions) (string, error) {
 	tempUnits := c.tempUnits()
 	windUnits := c.speedUnits()
 
-	forecast := fmt.Sprintf("%s, temp %.1f %v (feels like %.1f %v), humidity %.1f%%", ar.List[0].Weather[0].Description, ar.List[0].Main.Temp, tempUnits, ar.List[0].Main.Feels_like, tempUnits, ar.List[0].Main.Humidity)
+	forecast := fmt.Sprintf("%s, temp %.1f %v (feels like %.1f %v), humidity %.1f%%", w.description, w.temperature, tempUnits, w.feelsLike, tempUnits, w.humidity)
 
-	if ar.List[0].Wind.Speed > 0 {
-		forecast += fmt.Sprintf(", wind %v %v", ar.List[0].Wind.Speed, windUnits)
+	if w.windSpeed > 0 {
+		forecast += fmt.Sprintf(", wind %v %v", w.windSpeed, windUnits)
 	}
 
 	return forecast, nil
