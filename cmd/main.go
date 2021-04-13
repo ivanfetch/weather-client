@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultMeasurementSystem = "imperial"
+	defaultUnits = "imperial"
 )
 
 func main() {
@@ -28,24 +28,24 @@ func main() {
 	For example: "Great Neck Plaza,NY,US"
 `)
 
-	measurementSystem := flag.String("measurement", "", "Measurement system to use when obtaining and displaying temperature and wind-speed (standard for kelvin and meters, metric for celsius and meters, or imperial for fahrenheit and miles-per-hour). Also specified via the WEATHERCASTER_MEASUREMENT environment variable.")
+	units := flag.String("units", "", "Units to use when obtaining and displaying temperature and wind-speed (standard for kelvin and meters, metric for celsius and meters, or imperial for fahrenheit and miles-per-hour). Also specified via the WEATHERCASTER_UNITS environment variable.")
 
 	flag.Parse()
 
 	// Use an environment variable if the command-line flag was not specified.
-	if *measurementSystem == "" {
-		*measurementSystem = os.Getenv("WEATHERCASTER_MEASUREMENT")
+	if *units == "" {
+		*units = os.Getenv("WEATHERCASTER_UNITS")
 	}
 
-	switch strings.ToLower(*measurementSystem) {
+	switch strings.ToLower(*units) {
 	case "":
 		// The default is handled here, to allow the environment variable to override a non-specified flag.
-		*measurementSystem = defaultMeasurementSystem
+		*units = defaultUnits
 	case "standard":
 	case "metric":
 	case "imperial":
 	default:
-		fmt.Fprintf(os.Stderr, "Invalid measurement system %q - please specify one of standard, metric, or imperial\n", *measurementSystem)
+		fmt.Fprintf(os.Stderr, "Invalid units %q - please specify one of standard, metric, or imperial\n", *units)
 		os.Exit(1)
 	}
 
@@ -59,9 +59,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	wc := weather.NewClient(apiKey)
+	wc := weather.NewClient(apiKey, weather.WithUnits(*units))
 
-	forecast, err := wc.Forecast(*city, *measurementSystem)
+	forecast, err := wc.Forecast(*city)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

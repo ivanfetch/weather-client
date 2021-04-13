@@ -31,8 +31,8 @@ type APIResponse struct {
 
 // An OpenWeatherMap.org client
 type Client struct {
-	APIKey, APIHost, APIUri, MeasurementSystem string
-	HTTPClient                                 *http.Client
+	APIKey, APIHost, APIUri, Units string
+	HTTPClient                     *http.Client
 }
 
 // An option is implemented as a function, to set the state of that option.
@@ -56,9 +56,9 @@ func WithHTTPClient(hc *http.Client) ClientOption {
 	}
 }
 
-func WithMeasurementSystem(ms string) ClientOption {
+func WithUnits(u string) ClientOption {
 	return func(c *Client) {
-		c.MeasurementSystem = ms
+		c.Units = u
 	}
 }
 
@@ -68,10 +68,10 @@ func NewClient(APIKey string, options ...ClientOption) *Client {
 		APIKey:  APIKey,
 		APIHost: "https://api.openweathermap.org",
 		APIUri:  "/data/2.5/forecast",
+		Units:   "imperial",
 		// This non-default client and its timeout is used
 		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
-		HTTPClient:        &http.Client{Timeout: time.Second * 3},
-		MeasurementSystem: "imperial",
+		HTTPClient: &http.Client{Timeout: time.Second * 3},
 	}
 
 	for _, o := range options {
@@ -84,14 +84,14 @@ func NewClient(APIKey string, options ...ClientOption) *Client {
 func (c Client) formAPIUrl(city string) (string, error) {
 	var APIQueryOptions string
 
-	// Convert the measurement system to a weather API query-string.
-	switch strings.ToLower(c.MeasurementSystem) {
+	// Convert the units to a weather API query-string.
+	switch strings.ToLower(c.Units) {
 	case "standard":
-		// The OpenWeatherMap.org API default is standard,
-		// so no URL query-string is required.
+		// This is the OpenWeatherMap.org API default,
+		// no URL query-string is required.
 	default:
-		// All other valid metric system values can be specified directly in the query-string.
-		APIQueryOptions += fmt.Sprintf("&units=%s", strings.ToLower(c.MeasurementSystem))
+		// All other valid units can be specified directly in the query-string.
+		APIQueryOptions += fmt.Sprintf("&units=%s", strings.ToLower(c.Units))
 	}
 
 	// Limit the weather API response to a single time-stamp.
@@ -137,11 +137,11 @@ func (c Client) queryAPI(url string) (APIResponse, error) {
 	return apiRes, nil
 }
 
-// Forecast accepts a city and measurement system, and queries the weather API.
-func (c *Client) Forecast(city, measurementSystem string) (string, error) {
+// Forecast accepts a city, and queries the weather API.
+func (c *Client) Forecast(city string) (string, error) {
 	url, err := c.formAPIUrl(city)
 	if err != nil {
-		return "", fmt.Errorf("Error forming weather API URL for city %q, measurement system %q: %v", city, measurementSystem, err)
+		return "", fmt.Errorf("Error forming weather API URL for city %q: %v", city, err)
 	}
 
 	res, err := c.queryAPI(url)
@@ -150,27 +150,42 @@ func (c *Client) Forecast(city, measurementSystem string) (string, error) {
 	}
 
 	// The formatForecast method returns its own error.
-	return c.formatForecast(res, measurementSystem)
+	return c.formatForecast(res)
 }
 
-// formatForecast accepts an API response and measurement system,
-// and returns formatted output.
-func (c *Client) formatForecast(ar APIResponse, measurementSystem string) (string, error) {
-
-	var tempUnits, windUnits string
-	switch strings.ToLower(measurementSystem) {
+// speedUnits returns the unit of speed per the units set in the Client.
+func (c *Client) speedUnits() string {
+	switch strings.ToLower(c.Units) {
 	case "standard":
-		tempUnits = "ºK"
-		windUnits = "m/s"
+		return "m/s"
 	case "metric":
-		tempUnits = "ºC"
-		windUnits = "m/s"
+		return "m/s"
 	case "imperial":
-		tempUnits = "ºF"
-		windUnits = "MPH"
-	default:
-		return "", fmt.Errorf("unknown measurement system while formatting forecast: %q", measurementSystem)
+		return "MPH"
 	}
+	// We should never get here, also perhaps we should return an error?
+	return "unknown"
+}
+
+// tempUnits returns the unit of temperature per the units set in the Client.
+func (c *Client) tempUnits() string {
+	switch strings.ToLower(c.Units) {
+	case "standard":
+		return "ºK"
+	case "metric":
+		return "ºC"
+	case "imperial":
+		return "ºF"
+	}
+	// We should never get here, also perhaps we should return an error?
+	return "unknown"
+}
+
+// formatForecast accepts an API response,
+// and returns formatted output.
+func (c *Client) formatForecast(ar APIResponse) (string, error) {
+	tempUnits := c.tempUnits()
+	windUnits := c.speedUnits()
 
 	forecast := fmt.Sprintf("%s, temp %.1f %v (feels like %.1f %v), humidity %.1f%%", ar.List[0].Weather[0].Description, ar.List[0].Main.Temp, tempUnits, ar.List[0].Main.Feels_like, tempUnits, ar.List[0].Main.Humidity)
 
