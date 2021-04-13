@@ -8,9 +8,9 @@ import (
 )
 
 func main() {
-	err := weather.RunCLI(os.Args)
+	err := weather.RunCLI(os.Args, os.Stdout, os.Stderr)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

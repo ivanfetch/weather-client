@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -298,7 +299,7 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 }
 
 // RunCLI processes CLI arguments and outputs the forecast for a given location.
-func RunCLI(args []string) error {
+func RunCLI(args []string, output, errOutput io.Writer) error {
 	apiKey := os.Getenv("OPENWEATHERMAP_API_KEY")
 	if apiKey == "" {
 		return fmt.Errorf(`Please set the OPENWEATHERMAP_API_KEY environment variable to an OpenWeatherMap API key.
@@ -306,7 +307,7 @@ func RunCLI(args []string) error {
 	}
 
 	fs := flag.NewFlagSet("weather-caster", flag.ExitOnError)
-	fs.SetOutput(os.Stderr)
+	fs.SetOutput(errOutput)
 	cliLocation := fs.String("l", "", `The location for which you want a weather forecast. Also specified via the WEATHERCASTER_LOCATION environment variable.
 	A location can be specified as:
 	"LocationName" (for well-known locations, such as London)
@@ -314,8 +315,8 @@ func RunCLI(args []string) error {
 	For example: "Great Neck Plaza,NY,US"
 `)
 
-	cliSpeedUnit := fs.String("s", "", "Unit of measure to use when displaying wind speed (miles or meters). Also specified via the WEATHERCASTER_SPEED_UNITS environment variable. The default is miles.")
-	cliTempUnit := fs.String("t", "", "Unit of measure to use when displaying temperature (c for Celsius, f for Fahrenheit, or k for kelvin). Also specified via the WEATHERCASTER_TEMP_UNITS environment variable. The default is Fahrenheit.")
+	cliSpeedUnit := fs.String("s", "", "Unit of measure to use when displaying wind speed (miles or meters). Also specified via the WEATHERCASTER_SPEED_UNIT environment variable. The default is miles.")
+	cliTempUnit := fs.String("t", "", "Unit of measure to use when displaying temperature (c for Celsius, f for Fahrenheit, or k for kelvin). Also specified via the WEATHERCASTER_TEMP_UNIT environment variable. The default is Fahrenheit.")
 
 	err := fs.Parse(args[1:])
 	if err != nil {
@@ -324,10 +325,10 @@ func RunCLI(args []string) error {
 
 	// Use an environment variable if the unit command-line flags were not specified.
 	if *cliSpeedUnit == "" {
-		*cliSpeedUnit = os.Getenv("WEATHERCASTER_SPEED_UNITS")
+		*cliSpeedUnit = os.Getenv("WEATHERCASTER_SPEED_UNIT")
 	}
 	if *cliTempUnit == "" {
-		*cliTempUnit = os.Getenv("WEATHERCASTER_TEMP_UNITS")
+		*cliTempUnit = os.Getenv("WEATHERCASTER_TEMP_UNIT")
 	}
 
 	// Use an environment variable if the location command-line flag was not specified.
@@ -375,6 +376,6 @@ func RunCLI(args []string) error {
 		return err
 	}
 
-	fmt.Println(forecast)
+	fmt.Fprintln(output, forecast)
 	return nil
 }
