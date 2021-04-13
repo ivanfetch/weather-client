@@ -17,12 +17,12 @@ const (
 	defaultUnits = "imperial"
 )
 
-// weatherConditions stores API-agnostic weather information.
-type weatherConditions struct {
-	description            string
-	temperature, feelsLike float64
-	humidity               float64
-	windSpeed              float64
+// conditions stores API-agnostic weather information.
+type conditions struct {
+	description            *string
+	temperature, feelsLike *float64
+	humidity               *float64
+	windSpeed              *float64
 }
 
 // OWMResponse matches fields from the OpenWeatherMap.org API `/2.5/forecast`.
@@ -30,15 +30,15 @@ type weatherConditions struct {
 type OWMResponse struct {
 	List []struct {
 		Weather []struct {
-			Description string
+			Description *string
 		}
 		Main struct {
-			Temp       float64
-			Feels_like float64
-			Humidity   float64
+			Temp       *float64
+			Feels_like *float64
+			Humidity   *float64
 		}
 		Wind struct {
-			Speed float64
+			Speed *float64
 		}
 	}
 }
@@ -155,10 +155,10 @@ func (c Client) FormAPIURL(city string) (string, error) {
 }
 
 // queryAPI accepts an OpenWeatherMap.org URL and queries its API.
-func (c Client) queryAPI(url string) (weatherConditions, error) {
+func (c Client) queryAPI(url string) (conditions, error) {
 	resp, err := c.HTTPClient.Get(url)
 	if err != nil {
-		return weatherConditions{}, err
+		return conditions{}, err
 	}
 
 	defer resp.Body.Close()
@@ -166,28 +166,28 @@ func (c Client) queryAPI(url string) (weatherConditions, error) {
 	// ioutil.ReadAll() returns a slice of bytes
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return weatherConditions{}, err
+		return conditions{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return weatherConditions{}, fmt.Errorf("HTTP %d returned from weather API: %v", resp.StatusCode, string(data))
+		return conditions{}, fmt.Errorf("HTTP %d returned from weather API: %v", resp.StatusCode, string(data))
 	}
 
 	var ar OWMResponse
 	err = json.Unmarshal(data, &ar)
 	if err != nil {
-		return weatherConditions{}, err
+		return conditions{}, err
 	}
 
 	if len(ar.List) == 0 {
-		return weatherConditions{}, fmt.Errorf("Empty response.List while querying weather API")
+		return conditions{}, fmt.Errorf("Empty response.List while querying weather API")
 	}
 
 	if len(ar.List[0].Weather) == 0 {
-		return weatherConditions{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
+		return conditions{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
 	}
 
-	var w weatherConditions
+	var w conditions
 	w.description = ar.List[0].Weather[0].Description
 	w.temperature = ar.List[0].Main.Temp
 	w.feelsLike = ar.List[0].Main.Feels_like
@@ -241,15 +241,28 @@ func (c *Client) tempUnits() string {
 
 // formatForecast accepts an API response,
 // and returns formatted output.
-func (c *Client) formatForecast(w weatherConditions) (string, error) {
+func (c *Client) formatForecast(w conditions) (string, error) {
 	tempUnits := c.tempUnits()
 	windUnits := c.speedUnits()
+	var temperature, feelsLike, humidity, wind string
 
-	forecast := fmt.Sprintf("%s, temp %.1f %v (feels like %.1f %v), humidity %.1f%%", w.description, w.temperature, tempUnits, w.feelsLike, tempUnits, w.humidity)
-
-	if w.windSpeed > 0 {
-		forecast += fmt.Sprintf(", wind %v %v", w.windSpeed, windUnits)
+	if w.temperature != nil {
+		temperature = fmt.Sprintf(", temp %.1f %v", *w.temperature, tempUnits)
 	}
+
+	if w.feelsLike != nil {
+		feelsLike = fmt.Sprintf(", feels like %.1f %v", *w.feelsLike, tempUnits)
+	}
+
+	if w.humidity != nil {
+		humidity = fmt.Sprintf(", humidity %.1f%%", *w.humidity)
+	}
+
+	if w.windSpeed != nil {
+		wind = fmt.Sprintf(", wind %.1f %v", *w.windSpeed, windUnits)
+	}
+
+	forecast := fmt.Sprintf("%v%v%v%v%v", *w.description, temperature, feelsLike, humidity, wind)
 
 	return forecast, nil
 }

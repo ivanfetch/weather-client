@@ -95,7 +95,7 @@ func TestQueryAPI(t *testing.T) {
 		t.Fatalf("Error while instanciating weather client to get formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
 	}
 
-	want := "clear sky, temp 34.5 ºF (feels like 23.6 ºF), humidity 38.0%, wind 9.22 MPH"
+	want := "clear sky, temp 34.5 ºF, feels like 23.6 ºF, humidity 38.0%, wind 9.2 MPH"
 	got, err := wc.Forecast(testCity)
 	if err != nil {
 		t.Fatalf("Error while getting formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
