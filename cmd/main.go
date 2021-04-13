@@ -11,14 +11,13 @@ import (
 
 func main() {
 	apiKey := os.Getenv("WEATHERCASTER_API_KEY")
-	city := os.Getenv("WEATHERCASTER_CITY")
-
 	if apiKey == "" {
 		fmt.Println("Please set the WEATHERCASTER_API_KEY environment variable to an OpenWeatherMap API key.")
 		fmt.Println("To obtain an API key, see https://home.openweathermap.org/api_keys")
 		os.Exit(1)
 	}
 
+	city := os.Getenv("WEATHERCASTER_CITY")
 	if city == "" {
 		city = "Great Neck Plaza,NY,US"
 		fmt.Printf("Defaulting city to %s - to override, please set the WEATHERCASTER_CITY environment variable.\n", city)
