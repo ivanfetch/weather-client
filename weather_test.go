@@ -19,15 +19,15 @@ func TestQueryAPI(t *testing.T) {
 	// and populate it with JSON as though served by the weather API.
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, testJSON)
-	}))
+}))
 	defer ts.Close()
 
-	wc := weather.NewClient("DummyAPIKey")
+	wc := weather.NewClient("DummyAPIKey", weather.WithUnits(testUnits))
 	wc.HTTPClient = ts.Client()
 	wc.APIHost = ts.URL
 
 	want := "clear sky, temp 34.5 ºF (feels like 23.6 ºF), humidity 38.0%, wind 9.22 MPH"
-	got, err := wc.Forecast(testCity, testUnits)
+	got, err := wc.Forecast(testCity)
 	if err != nil {
 		t.Errorf("Error while getting formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
 	}
