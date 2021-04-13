@@ -28,7 +28,7 @@ func TestSetUnits(t *testing.T) {
 			want:  "imperial",
 		},
 		{
-			units: "",
+			units: "", // default test-case
 			want:  "imperial",
 		},
 		{
@@ -111,7 +111,6 @@ func TestFormAPIURL(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
 		city, units, want string
-		errExpected       bool
 	}{
 		{
 			city:  "Great Neck Plaza,NY,US",

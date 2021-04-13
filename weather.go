@@ -104,7 +104,7 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	return c, nil
 }
 
-// GetUnits returns the nonexported Client.units.
+// GetUnits returns the configured units for a weather client.
 func (c *Client) GetUnits() string {
 	return c.units
 }
@@ -143,7 +143,7 @@ func (c Client) FormAPIURL(city string) (string, error) {
 		// This is the OpenWeatherMap.org API default,
 		// no URL query-string is required.
 	default:
-		// All other valid units can be specified directly in the query-string.
+		// All other possible units can be specified directly in the query-string.
 		APIQueryOptions += fmt.Sprintf("&units=%s", c.units)
 	}
 
@@ -204,13 +204,13 @@ func (c *Client) Forecast(city string) (string, error) {
 		return "", fmt.Errorf("Error forming weather API URL for city %q: %v", city, err)
 	}
 
-	res, err := c.queryAPI(url)
+	resp, err := c.queryAPI(url)
 	if err != nil {
 		return "", fmt.Errorf("Error querying weather API for city %q: %v", city, err)
 	}
 
 	// The formatForecast method returns its own error.
-	return c.formatForecast(res)
+	return c.formatForecast(resp)
 }
 
 // speedUnits returns the unit of speed per the units set in the Client.
@@ -223,8 +223,7 @@ func (c *Client) speedUnits() string {
 	case "imperial":
 		return "MPH"
 	}
-	// We should never get here, also perhaps we should return an error?
-	return "unknown"
+	return "º"
 }
 
 // tempUnits returns the unit of temperature per the units set in the Client.
@@ -237,8 +236,7 @@ func (c *Client) tempUnits() string {
 	case "imperial":
 		return "ºF"
 	}
-	// We should never get here, also perhaps we should return an error?
-	return "unknown"
+	return "º"
 }
 
 // formatForecast accepts an API response,
@@ -261,7 +259,7 @@ func RunCLI(args []string) error {
 	apiKey := os.Getenv("OPENWEATHERMAP_API_KEY")
 	if apiKey == "" {
 		return fmt.Errorf(`Please set the OPENWEATHERMAP_API_KEY environment variable to an OpenWeatherMap API key.
-		To obtain an API key, see https://home.openweathermap.org/api_keys\n`)
+		To obtain an API key, see https://home.openweathermap.org/api_keys`)
 	}
 
 	fs := flag.NewFlagSet("weather-caster", flag.ExitOnError)
