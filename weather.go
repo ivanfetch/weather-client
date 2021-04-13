@@ -13,9 +13,37 @@ import (
 	"time"
 )
 
+// SpeedUnit represents a unit of speed as an integer.
+type SpeedUnit int
+
+// TempUnit represents a unit of temperature as an integer.
+type TempUnit int
+
+// Units of speed, the first listed is the default.
 const (
-	defaultUnits = "imperial"
+	SpeedUnitMiles SpeedUnit = iota
+	SpeedUnitMeters
 )
+
+// Units of temperature, the first listed is the default.
+const (
+	TempUnitFahrenheit TempUnit = iota
+	TempUnitCelsius
+	TempUnitKelvin
+)
+
+// speedUnitName stores friendly names for the speedUnit... constants.
+var speedUnitName = map[SpeedUnit]string{
+	SpeedUnitMiles:  "MPH",
+	SpeedUnitMeters: "m/s",
+}
+
+// tempUnitName stores friendly names for the tempUnit... constants.
+var tempUnitName = map[TempUnit]string{
+	TempUnitFahrenheit: "ºF",
+	TempUnitCelsius:    "ºC",
+	TempUnitKelvin:     "ºK",
+}
 
 // conditions stores API-agnostic weather information.
 type conditions struct {
@@ -45,8 +73,10 @@ type OWMResponse struct {
 
 // A weather client
 type Client struct {
-	APIKey, APIHost, APIURI, units string
-	HTTPClient                     *http.Client
+	APIKey, APIHost, APIURI string
+	speedUnit               SpeedUnit
+	tempUnit                TempUnit
+	HTTPClient              *http.Client
 }
 
 // An option is implemented as a function, to set the state of that option.
@@ -73,9 +103,19 @@ func WithHTTPClient(hc *http.Client) ClientOption {
 	}
 }
 
-func WithUnits(u string) ClientOption {
+func WithSpeedUnit(u SpeedUnit) ClientOption {
 	return func(c *Client) error {
-		err := c.SetUnits(u)
+		err := c.SetSpeedUnit(u)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func WithTempUnit(u TempUnit) ClientOption {
+	return func(c *Client) error {
+		err := c.SetTempUnit(u)
 		if err != nil {
 			return err
 		}
@@ -89,7 +129,6 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 		APIKey:  APIKey,
 		APIHost: "https://api.openweathermap.org",
 		APIURI:  "/data/2.5/forecast",
-		units:   defaultUnits,
 		// This non-default client and its timeout is used
 		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
 		HTTPClient: &http.Client{Timeout: time.Second * 3},
@@ -104,54 +143,71 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	return c, nil
 }
 
-// GetUnits returns the configured units for a weather client.
-func (c *Client) GetUnits() string {
-	return c.units
+// GetSpeedUnit returns the configured speed unit for a weather client.
+func (c *Client) GetSpeedUnit() SpeedUnit {
+	return c.speedUnit
 }
 
-// SetUnits validates then sets the units for the weather client.
-func (c *Client) SetUnits(u string) error {
-	units := strings.ToLower(u)
+// GetTempUnit returns the configured temperature unit for a weather client.
+func (c *Client) GetTempUnit() TempUnit {
+	return c.tempUnit
+}
 
-	switch units {
-	// An empty string sets the default value.
-	case "":
-		c.units = defaultUnits
-		return nil
-	case "si":
-		c.units = units
-		return nil
-	case "metric":
-		c.units = units
-		return nil
-	case "imperial":
-		c.units = units
-		return nil
-	default:
-		return fmt.Errorf("invalid value %q while setting units - please specify one of si, metric, or imperial\n", u)
+// SetSpeedUnit validates then sets speed unit for the weather client.
+func (c *Client) SetSpeedUnit(u SpeedUnit) error {
+	if u == SpeedUnitMiles || u == SpeedUnitMeters {
+		c.speedUnit = u
+	} else {
+		return fmt.Errorf("speed unit %v out of range, please use one of the SpeedUnitMeters or SpeedUnitMiles constants.\n", u)
+	}
+	return nil
+}
+
+// SetTempUnit validates then sets speed unit for the weather client.
+func (c *Client) SetTempUnit(u TempUnit) error {
+	if u == TempUnitCelsius || u == TempUnitFahrenheit || u == TempUnitKelvin {
+		c.tempUnit = u
+	} else {
+		return fmt.Errorf("temperature unit %v out of range, please use one of the TempUnitCelsius, TempUnitFahrenheit, or TempUnitKelvin constants.\n", u)
 	}
 	return nil
 }
 
 // FormAPIURL accepts a city and returns an OpenWeatherMap.org URL.
 func (c Client) FormAPIURL(city string) (string, error) {
-	var APIQueryOptions string
-
-	// Convert the units to a weather API query-string.
-	switch c.units {
-	case "si":
-		// This is the OpenWeatherMap.org API default,
-		// no URL query-string is required.
-	default:
-		// All other possible units can be specified directly in the query-string.
-		APIQueryOptions += fmt.Sprintf("&units=%s", c.units)
-	}
-
 	// Limit the weather API response to a single time-stamp.
-	APIQueryOptions += "&cnt=1"
+	APIQueryOptions := "&cnt=1"
 
 	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIURI, url.QueryEscape(city), c.APIKey, APIQueryOptions)
 	return u, nil
+}
+
+// ConvertTemp converts a temperature from Kelvin to the unit set in the weather client.
+func (c Client) ConvertTemp(kelvin float64) float64 {
+	var t float64
+	switch c.tempUnit {
+	case TempUnitCelsius:
+		t = kelvin - 273.15
+	case TempUnitFahrenheit:
+		t = 1.8*(kelvin-273) + 32
+	case TempUnitKelvin:
+		// Input is already Kelvin
+		return kelvin
+	}
+	return t
+}
+
+// ConvertSpeed converts a speed from meters/sec to the unit set in the weather client.
+func (c Client) ConvertSpeed(meters float64) float64 {
+	var s float64
+	switch c.speedUnit {
+	case SpeedUnitMeters:
+		// Input is already meters/sec
+		return meters
+	case SpeedUnitMiles:
+		s = meters * 2.236936
+	}
+	return s
 }
 
 // queryAPI accepts an OpenWeatherMap.org URL and queries its API.
@@ -213,45 +269,19 @@ func (c *Client) Forecast(city string) (string, error) {
 	return c.formatForecast(resp)
 }
 
-// speedUnits returns the unit of speed per the units set in the Client.
-func (c *Client) speedUnits() string {
-	switch c.units {
-	case "si":
-		return "m/s"
-	case "metric":
-		return "m/s"
-	case "imperial":
-		return "MPH"
-	}
-	return "º"
-}
-
-// tempUnits returns the unit of temperature per the units set in the Client.
-func (c *Client) tempUnits() string {
-	switch c.units {
-	case "si":
-		return "ºK"
-	case "metric":
-		return "ºC"
-	case "imperial":
-		return "ºF"
-	}
-	return "º"
-}
-
 // formatForecast accepts an API response,
 // and returns formatted output.
 func (c *Client) formatForecast(w conditions) (string, error) {
-	tempUnits := c.tempUnits()
-	windUnits := c.speedUnits()
+	tempUnit := tempUnitName[c.tempUnit]
+	speedUnit := speedUnitName[c.speedUnit]
 	var temperature, feelsLike, humidity, wind string
 
 	if w.temperature != nil {
-		temperature = fmt.Sprintf(", temp %.1f %v", *w.temperature, tempUnits)
+		temperature = fmt.Sprintf(", temp %.1f %v", c.ConvertTemp(*w.temperature), tempUnit)
 	}
 
 	if w.feelsLike != nil {
-		feelsLike = fmt.Sprintf(", feels like %.1f %v", *w.feelsLike, tempUnits)
+		feelsLike = fmt.Sprintf(", feels like %.1f %v", c.ConvertTemp(*w.feelsLike), tempUnit)
 	}
 
 	if w.humidity != nil {
@@ -259,7 +289,7 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 	}
 
 	if w.windSpeed != nil {
-		wind = fmt.Sprintf(", wind %.1f %v", *w.windSpeed, windUnits)
+		wind = fmt.Sprintf(", wind %.1f %v", c.ConvertSpeed(*w.windSpeed), speedUnit)
 	}
 
 	forecast := fmt.Sprintf("%v%v%v%v%v", *w.description, temperature, feelsLike, humidity, wind)
@@ -277,40 +307,70 @@ func RunCLI(args []string) error {
 
 	fs := flag.NewFlagSet("weather-caster", flag.ExitOnError)
 	fs.SetOutput(os.Stderr)
-	city := fs.String("city", "", `The name of the city for which you want a weather forecast. Also specified via the WEATHERCASTER_CITY environment variable.
+	cliCity := fs.String("city", "", `The name of the city for which you want a weather forecast. Also specified via the WEATHERCASTER_CITY environment variable.
 	A city can be specified as:
 	"CityName" (for well-known locations)
 	"CityName,StateName,CountryCode"
 	For example: "Great Neck Plaza,NY,US"
 `)
 
-	units := fs.String("units", "", "Units to use when obtaining and displaying temperature and wind-speed (si for kelvin and meters, metric for celsius and meters, or imperial for fahrenheit and miles-per-hour). Also specified via the WEATHERCASTER_UNITS environment variable.")
+	cliSpeedUnit := fs.String("s", "", "Unit of measure to use when displaying wind speed (miles or meters). Also specified via the WEATHERCASTER_SPEED_UNITS environment variable. The default is miles.")
+	cliTempUnit := fs.String("t", "", "Unit of measure to use when displaying temperature (c for Celsius, f for Fahrenheit, or k for kelvin). Also specified via the WEATHERCASTER_TEMP_UNITS environment variable. The default is Fahrenheit.")
 
 	err := fs.Parse(args[1:])
 	if err != nil {
 		return err
 	}
 
-	// Use an environment variable if the units command-line flag was not specified.
-	if *units == "" {
-		*units = os.Getenv("WEATHERCASTER_UNITS")
+	// Use an environment variable if the unit command-line flags were not specified.
+	if *cliSpeedUnit == "" {
+		*cliSpeedUnit = os.Getenv("WEATHERCASTER_SPEED_UNITS")
+	}
+	if *cliTempUnit == "" {
+		*cliTempUnit = os.Getenv("WEATHERCASTER_TEMP_UNITS")
 	}
 
 	// Use an environment variable if the city command-line flag was not specified.
-	if *city == "" {
-		*city = os.Getenv("WEATHERCASTER_CITY")
+	if *cliCity == "" {
+		*cliCity = os.Getenv("WEATHERCASTER_CITY")
 	}
 
-	if *city == "" {
+	if *cliCity == "" {
 		return fmt.Errorf("Please specify a city using either the -city command-line flag, or by setting the WEATHERCASTER_CITY environment variable.")
 	}
 
-	wc, err := NewClient(apiKey, WithUnits(*units))
+	var speedUnit SpeedUnit
+	switch strings.ToLower(*cliSpeedUnit) {
+	case "":
+		// Use the `SpeedUnit` type default.
+	case "mile", "miles":
+		speedUnit = SpeedUnitMiles
+	case "meter", "meters":
+		speedUnit = SpeedUnitMeters
+	default:
+		return fmt.Errorf("Speed unit %q is invalid, please specify one of miles or meters.", *cliSpeedUnit)
+	}
+
+	var tempUnit TempUnit
+	switch strings.ToLower(*cliTempUnit) {
+	case "":
+		// Use the `SpeedUnit` type default.
+	case "c", "celsius":
+		tempUnit = TempUnitCelsius
+	case "f", "fahrenheit":
+		tempUnit = TempUnitFahrenheit
+	case "k", "kelvin":
+		tempUnit = TempUnitKelvin
+	default:
+		return fmt.Errorf("Temperature unit %q is invalid, please specify one of c, f, or k for Celsius, Fahrenheit, or Kelvin respectively.", *cliTempUnit)
+	}
+
+	wc, err := NewClient(apiKey, WithSpeedUnit(speedUnit), WithTempUnit(tempUnit))
 	if err != nil {
 		return fmt.Errorf("Error creating weather client: %v\n", err)
 	}
 
-	forecast, err := wc.Forecast(*city)
+	forecast, err := wc.Forecast(*cliCity)
 	if err != nil {
 		return err
 	}

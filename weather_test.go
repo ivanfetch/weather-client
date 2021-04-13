@@ -9,140 +9,88 @@ import (
 	"weather"
 )
 
-func TestSetUnits(t *testing.T) {
-	// Define test cases
-	testCases := []struct {
-		units, want string
-		errExpected bool
-	}{
-		{
-			units: "si",
-			want:  "si",
-		},
-		{
-			units: "MeTrIc",
-			want:  "metric",
-		},
-		{
-			units: "Imperial",
-			want:  "imperial",
-		},
-		{
-			units: "", // default test-case
-			want:  "imperial",
-		},
-		{
-			units:       "kelvin",
-			want:        "failure test case",
-			errExpected: true,
-		},
-	}
-
+func TestForecast(t *testing.T) {
 	t.Parallel()
 
-	wc, err := weather.NewClient("DummyAPIKey")
-	if err != nil {
-		t.Fatalf("Error while instanciating weather client to test setting units: %v", err)
-	}
-
-	for _, tc := range testCases {
-		err := wc.SetUnits(tc.units)
-		if !tc.errExpected && err != nil {
-			t.Fatalf("Error while testing setting units to %q: %v", tc.units, err)
-		}
-
-		got := wc.GetUnits()
-		if !tc.errExpected && tc.want != got {
-			t.Errorf("Want %q, got %q, testing setting units to %q", tc.want, got, tc.units)
-		}
-	}
-}
-
-func TestQueryAPI(t *testing.T) {
 	const testCity = "Great Neck Plaza,NY,US"
-	const testUnits = "imperial"
 	const testFileName = "testdata/greatneck.json"
-	const wantRequestURL = "/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1"
+	const wantRequestURL = "/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1"
 
-	t.Parallel()
-
-	f, err := os.Open(testFileName)
-	if err != nil {
-		t.Fatalf("unable to open test JSON file: %v", err)
-	}
-	defer f.Close()
-
-	// Create a test HTTP server,
-	// and populate it with JSON as though served by the weather API.
-	// The `HandlerFunc` will be called when the test HTTP client
-	// queries the test server.
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := io.Copy(w, f)
-		if err != nil {
-			t.Fatalf("unable to copy test JSON from file %s to test HTTP server: %v", testFileName, err)
-		}
-		gotRequestURL := r.URL.String()
-		if wantRequestURL != gotRequestURL {
-			// t.ErrorF is used because FatalF will abort the http.HandlerFunc,
-			// causing the QueryAPI test to output failure.
-			t.Errorf("Want %q, got %q comparing API URI while getting formatted forecast for city %q using units %v\n", wantRequestURL, gotRequestURL, testCity, testUnits)
-		}
-	}))
-	defer ts.Close()
-
-	wc, err := weather.NewClient("DummyAPIKey", weather.WithUnits(testUnits), weather.WithHTTPClient(ts.Client()), weather.WithAPIHost(ts.URL))
-	if err != nil {
-		t.Fatalf("Error while instanciating weather client to get formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
-	}
-
-	want := "clear sky, temp 34.5 ºF, feels like 23.6 ºF, humidity 38.0%, wind 9.2 MPH"
-	got, err := wc.Forecast(testCity)
-	if err != nil {
-		t.Fatalf("Error while getting formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
-	}
-
-	if want != got {
-		t.Errorf("Want %q, got %q, testing formatted forecast for city %q using units %v\n", want, got, testCity, testUnits)
-	}
-}
-
-// Test FormAPIURL more deeply than TestForecast().
-func TestFormAPIURL(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
-		city, units, want string
+		description       string
+		setSpeedUnit      weather.SpeedUnit
+		setTempUnit       weather.TempUnit
+		want              string
+		clientErrExpected bool
 	}{
 		{
-			city:  "Great Neck Plaza,NY,US",
-			units: "si",
-			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1",
+			description:  "speed meters and temp kelvin",
+			setSpeedUnit: weather.SpeedUnitMeters,
+			setTempUnit:  weather.TempUnitKelvin,
+			want:         "overcast clouds, temp 286.0 ºK, feels like 285.7 ºK, humidity 92.0%, wind 2.5 m/s",
 		},
 		{
-			city:  "Great Neck Plaza,NY,US",
-			units: "metric",
-			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=metric&cnt=1",
+			description:  "speed meters and temp celsius",
+			setSpeedUnit: weather.SpeedUnitMeters,
+			setTempUnit:  weather.TempUnitCelsius,
+			want:         "overcast clouds, temp 12.9 ºC, feels like 12.6 ºC, humidity 92.0%, wind 2.5 m/s",
 		},
 		{
-			city:  "Great Neck Plaza,NY,US",
-			units: "imperial",
-			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1",
+			description:  "speed miles and temp fahrenheit",
+			setSpeedUnit: weather.SpeedUnitMiles,
+			setTempUnit:  weather.TempUnitFahrenheit,
+			want:         "overcast clouds, temp 55.4 ºF, feels like 54.9 ºF, humidity 92.0%, wind 5.6 MPH",
+		},
+		{
+			description:       "speed miles and invalid temp",
+			setSpeedUnit:      weather.SpeedUnitMiles,
+			setTempUnit:       30, // out of range int
+			clientErrExpected: true,
 		},
 	}
 
-	t.Parallel()
-
 	for _, tc := range testCases {
-		wc, err := weather.NewClient("DummyAPIKey", weather.WithUnits(tc.units))
+		f, err := os.Open(testFileName)
 		if err != nil {
-			t.Fatalf("Error while instanciating weather client to form API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
+			t.Fatalf("unable to open test JSON file: %v", err)
 		}
-		got, err := wc.FormAPIURL(tc.city)
-		if err != nil {
-			t.Fatalf("Error while forming API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
+		defer f.Close()
+
+		// Create a test HTTP server,
+		// and populate it with JSON as though served by the weather API.
+		// The `HandlerFunc` will be called when the test HTTP client
+		// queries the test server.
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, err := io.Copy(w, f)
+			if err != nil {
+				t.Fatalf("unable to copy test JSON from file %s to test HTTP server: %v", testFileName, err)
+			}
+			gotRequestURL := r.URL.String()
+			if wantRequestURL != gotRequestURL {
+				// t.ErrorF is used because FatalF will abort the http.HandlerFunc,
+				// causing the QueryAPI test to output failure.
+				t.Errorf("Want %q, got %q comparing API URI while getting forecast for city %q", wantRequestURL, gotRequestURL, testCity)
+			}
+		}))
+		defer ts.Close()
+
+		wc, err := weather.NewClient("DummyAPIKey", weather.WithSpeedUnit(tc.setSpeedUnit), weather.WithTempUnit(tc.setTempUnit), weather.WithHTTPClient(ts.Client()), weather.WithAPIHost(ts.URL))
+		if !tc.clientErrExpected && err != nil {
+			t.Fatalf("Error while instanciating weather client for test %v: %v", tc.description, err)
 		}
 
-		if tc.want != got {
-			t.Errorf("Want %q, got %q, forming API Url for city %s and units %v)\n", tc.want, got, tc.city, tc.units)
+		// Only get a forecast and compare results if the test-case did not expect
+		// an error from the client constructor.
+		if !tc.clientErrExpected {
+			got, err := wc.Forecast(testCity)
+			if err != nil {
+				t.Fatalf("Error while getting forecast for city %q: %v", testCity, err)
+			}
+
+			if tc.want != got {
+				t.Errorf("Want %q, got %q, testing %v", tc.want, got, tc.description)
+			}
 		}
 	}
 }
