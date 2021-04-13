@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // Multiple structs representing nested json from the OpenWeatherMap.org API,
@@ -54,15 +55,15 @@ func (c Client) formAPIUrl(city string) string {
 
 // Send an HTTP GET request.
 func (c Client) queryAPI(url string) (string, error) {
-	httpClient := http.Client{}
+	// This client and its timeout is used
+	// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
+	httpClient := http.Client{Timeout: time.Second * 3}
 	res, err := httpClient.Get(url)
 	if err != nil {
 		return "", err
 	}
 
-	if res.Body != nil {
 		defer res.Body.Close()
-	}
 
 	// ioutil.ReadAll() returns a slice of bytes
 	body, err := ioutil.ReadAll(res.Body)
