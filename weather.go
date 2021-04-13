@@ -54,9 +54,9 @@ type conditions struct {
 	windSpeed              *float64
 }
 
-// OWMResponse matches fields from the OpenWeatherMap.org API `/2.5/forecast`.
+// owmResponse stores fields from the OpenWeatherMap.org API `/2.5/forecast`.
 // This does not fully mirror the API!
-type OWMResponse struct {
+type owmResponse struct {
 	List []struct {
 		Weather []struct {
 			Description *string
@@ -72,7 +72,7 @@ type OWMResponse struct {
 	}
 }
 
-// A weather client
+// Client stores properties of a weather client.
 type Client struct {
 	APIKey, APIHost, APIURI string
 	speedUnit               SpeedUnit
@@ -80,9 +80,10 @@ type Client struct {
 	HTTPClient              *http.Client
 }
 
-// An option is implemented as a function, to set the state of that option.
+// ClientOption specifies weather.client options as functions.
 type ClientOption func(*Client) error
 
+// WithAPIHost sets the corresponding weather.client option.
 func WithAPIHost(host string) ClientOption {
 	return func(c *Client) error {
 		c.APIHost = host
@@ -90,6 +91,7 @@ func WithAPIHost(host string) ClientOption {
 	}
 }
 
+// WithAPIURI sets the corresponding weather.client option.
 func WithAPIURI(uri string) ClientOption {
 	return func(c *Client) error {
 		c.APIURI = uri
@@ -97,6 +99,7 @@ func WithAPIURI(uri string) ClientOption {
 	}
 }
 
+// WithHTTPClient sets the corresponding weather.client option.
 func WithHTTPClient(hc *http.Client) ClientOption {
 	return func(c *Client) error {
 		c.HTTPClient = hc
@@ -104,6 +107,7 @@ func WithHTTPClient(hc *http.Client) ClientOption {
 	}
 }
 
+// WithSpeedUnit sets the corresponding weather.client option.
 func WithSpeedUnit(u SpeedUnit) ClientOption {
 	return func(c *Client) error {
 		err := c.SetSpeedUnit(u)
@@ -114,6 +118,7 @@ func WithSpeedUnit(u SpeedUnit) ClientOption {
 	}
 }
 
+// WithTempUnit sets the corresponding weather.client option.
 func WithTempUnit(u TempUnit) ClientOption {
 	return func(c *Client) error {
 		err := c.SetTempUnit(u)
@@ -138,7 +143,7 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	for _, o := range options {
 		err := o(c)
 		if err != nil {
-			return &Client{}, err
+			return nil, err
 		}
 	}
 	return c, nil
@@ -154,7 +159,8 @@ func (c *Client) GetTempUnit() TempUnit {
 	return c.tempUnit
 }
 
-// SetSpeedUnit validates then sets speed unit for the weather client.
+// SetSpeedUnit validates then sets the speed unit for the weather client.
+// Valid units are in the range of `SpeedUnit...` package constants.
 func (c *Client) SetSpeedUnit(u SpeedUnit) error {
 	if u == SpeedUnitMiles || u == SpeedUnitMeters {
 		c.speedUnit = u
@@ -164,7 +170,8 @@ func (c *Client) SetSpeedUnit(u SpeedUnit) error {
 	return nil
 }
 
-// SetTempUnit validates then sets speed unit for the weather client.
+// SetTempUnit validates then sets the temperature unit for the weather client.
+// Valid units are in the range of `TempUnit...` package constants.
 func (c *Client) SetTempUnit(u TempUnit) error {
 	if u == TempUnitCelsius || u == TempUnitFahrenheit || u == TempUnitKelvin {
 		c.tempUnit = u
@@ -172,15 +179,6 @@ func (c *Client) SetTempUnit(u TempUnit) error {
 		return fmt.Errorf("temperature unit %v out of range, please use one of the TempUnitCelsius, TempUnitFahrenheit, or TempUnitKelvin constants.\n", u)
 	}
 	return nil
-}
-
-// FormAPIURL accepts a location and returns an OpenWeatherMap.org URL.
-func (c Client) FormAPIURL(location string) (string, error) {
-	// Limit the weather API response to a single time-stamp.
-	APIQueryOptions := "&cnt=1"
-
-	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIURI, url.QueryEscape(location), c.APIKey, APIQueryOptions)
-	return u, nil
 }
 
 // ConvertTemp converts a temperature from Kelvin to the unit set in the weather client.
@@ -227,39 +225,36 @@ func (c Client) queryAPI(url string) (conditions, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return conditions{}, fmt.Errorf("HTTP %d returned from weather API: %v", resp.StatusCode, string(data))
+		return conditions{}, fmt.Errorf("HTTP %s returned from weather API: %v", resp.Status, string(data))
 	}
 
-	var ar OWMResponse
+	var ar owmResponse
 	err = json.Unmarshal(data, &ar)
 	if err != nil {
 		return conditions{}, err
 	}
 
 	if len(ar.List) == 0 {
-		return conditions{}, fmt.Errorf("Empty response.List while querying weather API")
+		return conditions{}, fmt.Errorf("unexpected empty `List` from weather API: %+v", ar)
 	}
 
 	if len(ar.List[0].Weather) == 0 {
-		return conditions{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
+		return conditions{}, fmt.Errorf("unexpected empty List[0].Weather from weather API: %+v", ar)
 	}
 
-	var w conditions
-	w.description = ar.List[0].Weather[0].Description
-	w.temperature = ar.List[0].Main.Temp
-	w.feelsLike = ar.List[0].Main.Feels_like
-	w.humidity = ar.List[0].Main.Humidity
-	w.windSpeed = ar.List[0].Wind.Speed
+	return conditions{
 
-	return w, nil
+		description: ar.List[0].Weather[0].Description,
+		temperature: ar.List[0].Main.Temp,
+		feelsLike:   ar.List[0].Main.Feels_like,
+		humidity:    ar.List[0].Main.Humidity,
+		windSpeed:   ar.List[0].Wind.Speed,
+	}, nil
 }
 
-// Forecast accepts a location, and queries the weather API.
+// Forecast accepts a location and queries the weather API.
 func (c *Client) Forecast(location string) (string, error) {
-	url, err := c.FormAPIURL(location)
-	if err != nil {
-		return "", fmt.Errorf("Error forming weather API URL for location %q: %v", location, err)
-	}
+	url := fmt.Sprintf("%s%s/?q=%s&appid=%s&cnt=1", c.APIHost, c.APIURI, url.QueryEscape(location), c.APIKey)
 
 	resp, err := c.queryAPI(url)
 	if err != nil {
@@ -270,8 +265,7 @@ func (c *Client) Forecast(location string) (string, error) {
 	return c.formatForecast(resp)
 }
 
-// formatForecast accepts an API response,
-// and returns formatted output.
+// formatForecast accepts weather conditions and returns formatted output.
 func (c *Client) formatForecast(w conditions) (string, error) {
 	tempUnit := tempUnitName[c.tempUnit]
 	speedUnit := speedUnitName[c.speedUnit]
@@ -298,7 +292,8 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 	return forecast, nil
 }
 
-// RunCLI processes CLI arguments and outputs the forecast for a given location.
+// RunCLI accepts CLI arguments, and output and error io.Writers,
+// and outputs the forecast for a given location.
 func RunCLI(args []string, output, errOutput io.Writer) error {
 	apiKey := os.Getenv("OPENWEATHERMAP_API_KEY")
 	if apiKey == "" {

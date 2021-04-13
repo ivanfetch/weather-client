@@ -53,7 +53,7 @@ func TestForecast(t *testing.T) {
 	for _, tc := range testCases {
 		f, err := os.Open(testFileName)
 		if err != nil {
-			t.Fatalf("unable to open test JSON file: %v", err)
+			t.Fatalf("%v", err)
 		}
 		defer f.Close()
 
