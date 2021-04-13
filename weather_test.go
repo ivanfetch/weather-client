@@ -29,9 +29,12 @@ func TestQueryAPI(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	wc := weather.NewClient("DummyAPIKey", weather.WithUnits(testUnits))
-	wc.HTTPClient = ts.Client()
-	wc.APIHost = ts.URL
+	wc, err := weather.NewClient("DummyAPIKey", weather.WithUnits(testUnits), weather.WithHTTPClient(ts.Client()), weather.WithAPIHost(ts.URL))
+	if err != nil {
+		t.Fatalf("Error while instanciating weather client before getting formatted forecast for city %q using units %v: %v\n", testCity, testUnits, err)
+	}
+	// wc.HTTPClient = ts.Client()
+	// wc.APIHost = ts.URL
 
 	want := "clear sky, temp 34.5 ºF (feels like 23.6 ºF), humidity 38.0%, wind 9.22 MPH"
 	got, err := wc.Forecast(testCity)
@@ -53,7 +56,7 @@ func TestFormAPIUrl(t *testing.T) {
 	}{
 		{
 			city:  "Great Neck Plaza,NY,US",
-			units: "standard",
+			units: "si",
 			want:  "https://api.openweathermap.org/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&cnt=1",
 		},
 		{
@@ -71,7 +74,10 @@ func TestFormAPIUrl(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range testCases {
-		wc := weather.NewClient("DummyAPIKey", weather.WithUnits(tc.units))
+		wc, err := weather.NewClient("DummyAPIKey", weather.WithUnits(tc.units))
+		if err != nil {
+			t.Fatalf("Error while instanciating weather client to form API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
+		}
 		got, err := wc.FormAPIUrl(tc.city)
 		if err != nil {
 			t.Fatalf("Error while forming API URL for city %q and units %v: %v\n", tc.city, tc.units, err)

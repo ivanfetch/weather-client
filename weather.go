@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	defaultUnits = "imperial"
+)
+
 // APIResponse matches fields from the OpenWeatherMap.org API `/2.5/forecast`.
 // This does not fully mirror the API!
 type APIResponse struct {
@@ -31,53 +35,87 @@ type APIResponse struct {
 
 // An OpenWeatherMap.org client
 type Client struct {
-	APIKey, APIHost, APIUri, Units string
+	APIKey, APIHost, APIUri, units string
 	HTTPClient                     *http.Client
 }
 
 // An option is implemented as a function, to set the state of that option.
-type ClientOption func(*Client)
+type ClientOption func(*Client) error
 
 func WithAPIHost(host string) ClientOption {
-	return func(c *Client) {
+	return func(c *Client) error {
 		c.APIHost = host
+		return nil
 	}
 }
 
 func WithAPIUri(uri string) ClientOption {
-	return func(c *Client) {
+	return func(c *Client) error {
 		c.APIUri = uri
+		return nil
 	}
 }
 
 func WithHTTPClient(hc *http.Client) ClientOption {
-	return func(c *Client) {
+	return func(c *Client) error {
 		c.HTTPClient = hc
+		return nil
 	}
 }
 
 func WithUnits(u string) ClientOption {
-	return func(c *Client) {
-		c.Units = u
+	return func(c *Client) error {
+		err := c.SetUnits(u)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 }
 
 // NewClient returns a pointer to a new weather client.
-func NewClient(APIKey string, options ...ClientOption) *Client {
+func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	c := &Client{
 		APIKey:  APIKey,
 		APIHost: "https://api.openweathermap.org",
 		APIUri:  "/data/2.5/forecast",
-		Units:   "imperial",
+		units:   defaultUnits,
 		// This non-default client and its timeout is used
 		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
 		HTTPClient: &http.Client{Timeout: time.Second * 3},
 	}
 
 	for _, o := range options {
-		o(c)
+		err := o(c)
+		if err != nil {
+			return &Client{}, err
+		}
 	}
-	return c
+	return c, nil
+}
+
+// SetUnits validates then sets the units for the weather client.
+func (c *Client) SetUnits(u string) error {
+	units := strings.ToLower(u)
+
+	switch units {
+	// An empty string sets the default value.
+	case "":
+		c.units = defaultUnits
+		return nil
+	case "si":
+		c.units = units
+		return nil
+	case "metric":
+		c.units = units
+		return nil
+	case "imperial":
+		c.units = units
+		return nil
+	default:
+		return fmt.Errorf("invalid value %q while setting units - please specify one of si, metric, or imperial\n", u)
+	}
+	return nil
 }
 
 // FormAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
@@ -85,13 +123,13 @@ func (c Client) FormAPIUrl(city string) (string, error) {
 	var APIQueryOptions string
 
 	// Convert the units to a weather API query-string.
-	switch strings.ToLower(c.Units) {
-	case "standard":
+	switch c.units {
+	case "si":
 		// This is the OpenWeatherMap.org API default,
 		// no URL query-string is required.
 	default:
 		// All other valid units can be specified directly in the query-string.
-		APIQueryOptions += fmt.Sprintf("&units=%s", strings.ToLower(c.Units))
+		APIQueryOptions += fmt.Sprintf("&units=%s", c.units)
 	}
 
 	// Limit the weather API response to a single time-stamp.
@@ -155,8 +193,8 @@ func (c *Client) Forecast(city string) (string, error) {
 
 // speedUnits returns the unit of speed per the units set in the Client.
 func (c *Client) speedUnits() string {
-	switch strings.ToLower(c.Units) {
-	case "standard":
+	switch c.units {
+	case "si":
 		return "m/s"
 	case "metric":
 		return "m/s"
@@ -169,8 +207,8 @@ func (c *Client) speedUnits() string {
 
 // tempUnits returns the unit of temperature per the units set in the Client.
 func (c *Client) tempUnits() string {
-	switch strings.ToLower(c.Units) {
-	case "standard":
+	switch c.units {
+	case "si":
 		return "ºK"
 	case "metric":
 		return "ºC"

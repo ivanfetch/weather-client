@@ -5,12 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"weather"
-)
-
-const (
-	defaultUnits = "imperial"
 )
 
 func main() {
@@ -32,24 +27,12 @@ func main() {
 
 	flag.Parse()
 
-	// Use an environment variable if the command-line flag was not specified.
+	// Use an environment variable if the units command-line flag was not specified.
 	if *units == "" {
 		*units = os.Getenv("WEATHERCASTER_UNITS")
 	}
 
-	switch strings.ToLower(*units) {
-	case "":
-		// The default is handled here, to allow the environment variable to override a non-specified flag.
-		*units = defaultUnits
-	case "standard":
-	case "metric":
-	case "imperial":
-	default:
-		fmt.Fprintf(os.Stderr, "Invalid units %q - please specify one of standard, metric, or imperial\n", *units)
-		os.Exit(1)
-	}
-
-	// Use an environment variable if the command-line flag was not specified.
+	// Use an environment variable if the city command-line flag was not specified.
 	if *city == "" {
 		*city = os.Getenv("WEATHERCASTER_CITY")
 	}
@@ -59,7 +42,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	wc := weather.NewClient(apiKey, weather.WithUnits(*units))
+	wc, err := weather.NewClient(apiKey, weather.WithUnits(*units))
+	if err != nil {
+		fmt.Printf("Error creating weather client: %v\n", err)
+		os.Exit(1)
+	}
 
 	forecast, err := wc.Forecast(*city)
 	if err != nil {
