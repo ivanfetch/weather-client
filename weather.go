@@ -95,13 +95,22 @@ func (c *Client) ForecastByCity(city string) (string, error) {
 
 	c.response = res
 
-	return c.GetForecast(), nil
+	// The GetForecast method returns its own error
+	return c.GetForecast()
 }
 
-// Return the weather description,
+// GetForecasts returns formatted forecast output
 // from the last query to the weather API.
-func (c *Client) GetForecast() string {
-	return c.response.List[0].Weather[0].Description
+func (c *Client) GetForecast() (string, error) {
+	if len(c.response.List) == 0 {
+		return "", fmt.Errorf("GetForecast() has an empty response.List")
+	}
+
+	if len(c.response.List[0].Weather) == 0 {
+		return "", fmt.Errorf("GetForecast() has an empty response.List.Weather")
+	}
+
+	return c.response.List[0].Weather[0].Description, nil
 }
 
 // Return the response from the last query to the weather API.
