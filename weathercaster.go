@@ -1,4 +1,4 @@
-// Package weatherCaster eases getting and parsing weather data from an API
+// Package weatherCaster eases getting and parsing weather data from OpenWeatherMap.org
 package weatherCaster
 
 import (
@@ -6,18 +6,31 @@ import (
 	"net/url"
 )
 
-// Constants that will later become proper options, passed in from CLI.
-const ApiHost = "api.openweathermap.org"
-const ApiUri = "/data/2.5/forecast"
+// An OpenWeatherMap.org client
+type Client struct {
+	ApiKey, ApiHost, ApiUri, ApiQueryOptions string
+}
 
-// Additional API query options to always include, for now.
-// Some of these will eventually become configurable.
-// The `cnt` limits how many results are returned in a "circle" around a city.
-const ApiQueryOptions = "&units=imperial&cnt=1"
+// Return a pointer to a new weather client,
+// while setting defaults.
+func NewClient(apiKey string) *Client {
+	var c Client
+
+	c.ApiKey = apiKey
+	// Set other OpenWeatherMap.org defaults
+	c.ApiHost = "api.openweathermap.org"
+	c.ApiUri = "/data/2.5/forecast"
+	// Additional API query options to always include, for now.
+	// Some of these will eventually become configurable.
+	// The `cnt` limits how many results are returned in a "circle" around a city.
+	c.ApiQueryOptions = "&units=imperial&cnt=1"
+
+	return &c
+}
 
 // Form a URL to the weather API,
-// given an API key and city to query.
-func FormUrl(apiKey, city string) string {
-	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", ApiHost, ApiUri, url.QueryEscape(city), apiKey, ApiQueryOptions)
+// given a city to query.
+func (c Client) FormUrl(city string) string {
+	u := fmt.Sprintf("https://%s%s/?q=%s&appid=%s%s", c.ApiHost, c.ApiUri, url.QueryEscape(city), c.ApiKey, c.ApiQueryOptions)
 	return u
 }
