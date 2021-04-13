@@ -179,9 +179,9 @@ func (c Client) ConvertTemp(kelvin float64) float64 {
 	var t float64
 	switch c.tempUnit {
 	case TempUnitCelsius:
-		t = kelvin - 273.15
+		return kelvin - 273.15
 	case TempUnitFahrenheit:
-		t = 1.8*(kelvin-273) + 32
+		return 1.8*(kelvin-273) + 32
 	case TempUnitKelvin:
 		// Input is already Kelvin
 		return kelvin
@@ -197,7 +197,7 @@ func (c Client) ConvertSpeed(meters float64) float64 {
 		// Input is already meters/sec
 		return meters
 	case SpeedUnitMiles:
-		s = meters * 2.236936
+		return meters * 2.236936
 	}
 	return s
 }
@@ -283,7 +283,7 @@ func (c *Client) formatForecast(w conditions) (string, error) {
 		wind = fmt.Sprintf(", wind %.1f %v", c.ConvertSpeed(*w.windSpeed), speedUnit)
 	}
 
-	forecast := fmt.Sprintf("%v%v%v%v%v", *w.description, temperature, feelsLike, humidity, wind)
+	forecast := fmt.Sprintf("%s%s%s%s%s", *w.description, temperature, feelsLike, humidity, wind)
 
 	return forecast, nil
 }

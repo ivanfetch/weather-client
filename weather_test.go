@@ -28,7 +28,7 @@ func TestForecast(t *testing.T) {
 			description:  "speed meters and temp kelvin",
 			setSpeedUnit: weather.SpeedUnitMeters,
 			setTempUnit:  weather.TempUnitKelvin,
-			want:         "overcast clouds, temp 286.0 ºK, feels like 285.7 ºK, humidity 92.0%, wind 2.5 m/s",
+			want:         "overcast clouds, temp 286.0K, feels like 285.7K, humidity 92.0%, wind 2.5 m/s",
 		},
 		{
 			description:  "speed meters and temp celsius",
@@ -40,7 +40,7 @@ func TestForecast(t *testing.T) {
 			description:  "speed miles and temp fahrenheit",
 			setSpeedUnit: weather.SpeedUnitMiles,
 			setTempUnit:  weather.TempUnitFahrenheit,
-			want:         "overcast clouds, temp 55.4 ºF, feels like 54.9 ºF, humidity 92.0%, wind 5.6 MPH",
+			want:         "overcast clouds, temp 55.4 ºF, feels like 54.9 ºF, humidity 92.0%, wind 5.6 mph",
 		},
 		{
 			description:       "speed miles and invalid temp",
