@@ -12,8 +12,8 @@ import (
 func TestQueryAPI(t *testing.T) {
 	const testCity = "Great Neck Plaza,NY,US"
 	const testUnits = "imperial"
-const testFileName = "testdata/greatneck.json"
-const wantRequestURL = "/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1"
+	const testFileName = "testdata/greatneck.json"
+	const wantRequestURL = "/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=DummyAPIKey&units=imperial&cnt=1"
 
 	t.Parallel()
 
@@ -25,9 +25,9 @@ const wantRequestURL = "/data/2.5/forecast/?q=Great+Neck+Plaza%2CNY%2CUS&appid=D
 
 	// Create a test HTTP server,
 	// and populate it with JSON as though served by the weather API.
-// The `HandlerFunc` will be called when the test HTTP client
-// queries the test server.
-ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// The `HandlerFunc` will be called when the test HTTP client
+	// queries the test server.
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := io.Copy(w, f)
 		if err != nil {
 			t.Fatalf("unable to copy test JSON from file %s to test HTTP server: %v", testFileName, err)

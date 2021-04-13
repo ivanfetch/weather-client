@@ -3,10 +3,12 @@ package weather
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -232,4 +234,56 @@ func (c *Client) formatForecast(ar APIResponse) (string, error) {
 	}
 
 	return forecast, nil
+}
+
+// RunCLI processes CLI arguments and outputs the forecast for a given city.
+func RunCLI(args []string) error {
+	apiKey := os.Getenv("OPENWEATHERMAP_API_KEY")
+	if apiKey == "" {
+		return fmt.Errorf(`Please set the OPENWEATHERMAP_API_KEY environment variable to an OpenWeatherMap API key.
+		To obtain an API key, see https://home.openweathermap.org/api_keys\n`)
+	}
+
+	fs := flag.NewFlagSet("weather-caster", flag.ExitOnError)
+	fs.SetOutput(os.Stderr)
+	city := fs.String("city", "", `The name of the city for which you want a weather forecast. Also specified via the WEATHERCASTER_CITY environment variable.
+	A city can be specified as:
+	"CityName" (for well-known locations)
+	"CityName,StateName,CountryCode"
+	For example: "Great Neck Plaza,NY,US"
+`)
+
+	units := fs.String("units", "", "Units to use when obtaining and displaying temperature and wind-speed (si for kelvin and meters, metric for celsius and meters, or imperial for fahrenheit and miles-per-hour). Also specified via the WEATHERCASTER_UNITS environment variable.")
+
+	err := fs.Parse(args[1:])
+	if err != nil {
+		return err
+	}
+
+	// Use an environment variable if the units command-line flag was not specified.
+	if *units == "" {
+		*units = os.Getenv("WEATHERCASTER_UNITS")
+	}
+
+	// Use an environment variable if the city command-line flag was not specified.
+	if *city == "" {
+		*city = os.Getenv("WEATHERCASTER_CITY")
+	}
+
+	if *city == "" {
+		return fmt.Errorf("Please specify a city using either the -city command-line flag, or by setting the WEATHERCASTER_CITY environment variable.")
+	}
+
+	wc, err := NewClient(apiKey, WithUnits(*units))
+	if err != nil {
+		return fmt.Errorf("Error creating weather client: %v\n", err)
+	}
+
+	forecast, err := wc.Forecast(*city)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(forecast)
+	return nil
 }
