@@ -1,5 +1,5 @@
-// Package weatherCaster eases getting and parsing weather data from OpenWeatherMap.org
-package weatherCaster
+// Package weather eases getting and parsing weather data from OpenWeatherMap.org
+package weather
 
 import (
 	"encoding/json"

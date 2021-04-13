@@ -1,4 +1,4 @@
-// The weatherCaster CLI returns a brief weather forecast.
+// The weather CLI returns a brief weather forecast.
 // TODO: use the cobra package
 // to provide usage and nicer environment variable and command-line options.
 package main
@@ -6,7 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"weatherCaster"
+	"weather"
 )
 
 func main() {
@@ -23,7 +23,7 @@ fmt.Fprintf(os.Stderr, "To obtain an API key, see https://home.openweathermap.or
 		fmt.Printf("Defaulting city to %s - to override, please set the WEATHERCASTER_CITY environment variable.\n", city)
 	}
 
-	wc := weatherCaster.NewClient(apiKey)
+	wc := weather.NewClient(apiKey)
 
 	json, err := wc.HttpGet(wc.FormUrl(city))
 	if err != nil {
