@@ -35,7 +35,7 @@ type APIResponse struct {
 
 // An OpenWeatherMap.org client
 type Client struct {
-	APIKey, APIHost, APIUri, units string
+	APIKey, APIHost, APIURI, units string
 	HTTPClient                     *http.Client
 }
 
@@ -49,9 +49,9 @@ func WithAPIHost(host string) ClientOption {
 	}
 }
 
-func WithAPIUri(uri string) ClientOption {
+func WithAPIURI(uri string) ClientOption {
 	return func(c *Client) error {
-		c.APIUri = uri
+		c.APIURI = uri
 		return nil
 	}
 }
@@ -78,7 +78,7 @@ func NewClient(APIKey string, options ...ClientOption) (*Client, error) {
 	c := &Client{
 		APIKey:  APIKey,
 		APIHost: "https://api.openweathermap.org",
-		APIUri:  "/data/2.5/forecast",
+		APIURI:  "/data/2.5/forecast",
 		units:   defaultUnits,
 		// This non-default client and its timeout is used
 		// RE: https://medium.com/@nate510/don-t-use-go-s-default-http-client-4804cb19f779
@@ -118,8 +118,8 @@ func (c *Client) SetUnits(u string) error {
 	return nil
 }
 
-// FormAPIUrl accepts a city and returns an OpenWeatherMap.org URL.
-func (c Client) FormAPIUrl(city string) (string, error) {
+// FormAPIURL accepts a city and returns an OpenWeatherMap.org URL.
+func (c Client) FormAPIURL(city string) (string, error) {
 	var APIQueryOptions string
 
 	// Convert the units to a weather API query-string.
@@ -135,49 +135,49 @@ func (c Client) FormAPIUrl(city string) (string, error) {
 	// Limit the weather API response to a single time-stamp.
 	APIQueryOptions += "&cnt=1"
 
-	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIUri, url.QueryEscape(city), c.APIKey, APIQueryOptions)
+	u := fmt.Sprintf("%s%s/?q=%s&appid=%s%s", c.APIHost, c.APIURI, url.QueryEscape(city), c.APIKey, APIQueryOptions)
 	return u, nil
 }
 
 // queryAPI accepts an OpenWeatherMap.org URL and queries its API.
 func (c Client) queryAPI(url string) (APIResponse, error) {
-	var apiRes APIResponse
+	var apiRespp APIResponse
 
-	httpRes, err := c.HTTPClient.Get(url)
+	resp, err := c.HTTPClient.Get(url)
 	if err != nil {
 		return APIResponse{}, err
 	}
 
-	defer httpRes.Body.Close()
+	defer resp.Body.Close()
 
 	// ioutil.ReadAll() returns a slice of bytes
-	data, err := ioutil.ReadAll(httpRes.Body)
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return APIResponse{}, err
 	}
 
-	if httpRes.StatusCode != http.StatusOK {
-		return apiRes, fmt.Errorf("HTTP %d returned from weather API: %v", httpRes.StatusCode, string(data))
+	if resp.StatusCode != http.StatusOK {
+		return apiRespp, fmt.Errorf("HTTP %d returned from weather API: %v", resp.StatusCode, string(data))
 	}
 
-	err = json.Unmarshal(data, &apiRes)
+	err = json.Unmarshal(data, &apiRespp)
 	if err != nil {
 		return APIResponse{}, err
 	}
 
-	if len(apiRes.List) == 0 {
+	if len(apiRespp.List) == 0 {
 		return APIResponse{}, fmt.Errorf("Empty response.List while querying weather API")
 	}
 
-	if len(apiRes.List[0].Weather) == 0 {
+	if len(apiRespp.List[0].Weather) == 0 {
 		return APIResponse{}, fmt.Errorf("Empty response.List[0].Weather while querying weather API")
 	}
-	return apiRes, nil
+	return apiRespp, nil
 }
 
 // Forecast accepts a city, and queries the weather API.
 func (c *Client) Forecast(city string) (string, error) {
-	url, err := c.FormAPIUrl(city)
+	url, err := c.FormAPIURL(city)
 	if err != nil {
 		return "", fmt.Errorf("Error forming weather API URL for city %q: %v", city, err)
 	}

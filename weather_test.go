@@ -47,8 +47,8 @@ func TestQueryAPI(t *testing.T) {
 	}
 }
 
-// Test FormAPIUrl more deeply than TestForecast().
-func TestFormAPIUrl(t *testing.T) {
+// Test FormAPIURL more deeply than TestForecast().
+func TestFormAPIURL(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
 		city, units, want string
@@ -78,7 +78,7 @@ func TestFormAPIUrl(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error while instanciating weather client to form API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
 		}
-		got, err := wc.FormAPIUrl(tc.city)
+		got, err := wc.FormAPIURL(tc.city)
 		if err != nil {
 			t.Fatalf("Error while forming API URL for city %q and units %v: %v\n", tc.city, tc.units, err)
 		}

@@ -23,7 +23,7 @@ func main() {
 	For example: "Great Neck Plaza,NY,US"
 `)
 
-	units := flag.String("units", "", "Units to use when obtaining and displaying temperature and wind-speed (standard for kelvin and meters, metric for celsius and meters, or imperial for fahrenheit and miles-per-hour). Also specified via the WEATHERCASTER_UNITS environment variable.")
+	units := flag.String("units", "", "Units to use when obtaining and displaying temperature and wind-speed (si for kelvin and meters, metric for celsius and meters, or imperial for fahrenheit and miles-per-hour). Also specified via the WEATHERCASTER_UNITS environment variable.")
 
 	flag.Parse()
 
